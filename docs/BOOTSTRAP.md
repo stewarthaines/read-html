@@ -148,7 +148,7 @@ The design reference is the **PDF.js viewer built into Firefox**: chrome so plai
 - **M4 direction**: RTL fixture paging correctly, logical nav, UI dir switching.
 - **M5 scripts**: consent gate end-to-end against scripted fixtures (§6), including the strip path and the graceful-degradation assertion.
 - **M6 catalog**: OPDS browse/download, deep links, CORS error UX. _(Amendment, M2: drag-drop import from feature 1 — unassigned in the original milestone list — lands here alongside `?book=`, completing feature 1's three open paths.)_
-- **M7 ship**: single-file build target, size budget check (fail CI if `READ.html` exceeds 1.5 MB), README, deploy pipeline.
+- **M7 ship**: single-file build target, size budget check (fail CI if `READ.html` exceeds 1.5 MB), README, deploy pipeline. _(Amendment, post-M2: the single-file build target, its smoke boot from `file://`, and its CI step were pulled forward into a standalone step after M2, resolving the conflict with §1's "two build targets from day one" — the single-file target generates architectural constraints best discovered early. M7 retains the size-budget CI gate, README, deploy pipeline, and feature 11's full `file://` storage degradation.)_
 
 ## 6. Test fixtures
 

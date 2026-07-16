@@ -15,6 +15,14 @@ Accepted when all of the following hold (e2e: `e2e/library.spec.ts`; unit: `test
 - CFI persistence round-trip is unit-tested (the stored string survives put/get verbatim).
 - Accessibility: axe passes on the library with books present. Visual snapshot: library view with one imported book.
 
+## Single-file build target (standalone step, post-M2)
+
+Pulled forward from M7 to resolve §1's "two build targets from day one" against §5's original sequencing. Accepted when:
+
+- `npm run build:single` produces a self-contained `dist-single/READ.html` (all assets inlined, the vendored engine's dynamic imports collapsed into the single chunk).
+- `npm run smoke` boots both artifacts headlessly and fails loudly if either is missing: `dist/` over HTTP and `READ.html` from a `file://` URL (its offline-from-disk contract). CI builds and smokes both on every push.
+- Remaining at M7: the 1.5 MB size-budget CI gate, README, deploy pipeline, and feature 11's full `file://` storage degradation (in-memory + notice) with its e2e.
+
 ## M1 — render
 
 Accepted when all of the following hold (e2e: `e2e/reader.spec.ts`, `e2e/visual.spec.ts`; unit: `tests/strip.test.ts`):
