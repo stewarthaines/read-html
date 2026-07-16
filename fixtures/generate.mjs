@@ -108,18 +108,26 @@ const PARAGRAPH_BODY =
   'The steady lamp burned on the desk while rain traced slow lines down the window glass. ' +
   'The reader turned the page and the story went on as before.'
 
+const PARAGRAPH_BODY_AR =
+  'جلس القارئ قرب النافذة والمطر يرسم خطوطاً بطيئة على الزجاج، ثم قلب الصفحة ومضت الحكاية كما كانت.'
+
 /**
  * @param {string} title
  * @param {number} paragraphCount
+ * @param {{ htmlAttrs?: string, paragraphText?: (i: number) => string }} [options]
  */
-function chapterXhtml(title, paragraphCount) {
+function chapterXhtml(title, paragraphCount, options = {}) {
+  const htmlAttrs = options.htmlAttrs ?? ''
+  const paragraphText =
+    options.paragraphText ??
+    ((/** @type {number} */ i) => `Paragraph ${i} of ${title}. ${PARAGRAPH_BODY}`)
   /** @type {string[]} */
   const paragraphs = []
   for (let i = 1; i <= paragraphCount; i++) {
-    paragraphs.push(`    <p>Paragraph ${i} of ${title}. ${PARAGRAPH_BODY}</p>`)
+    paragraphs.push(`    <p>${paragraphText(i)}</p>`)
   }
   return `<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml"${htmlAttrs}>
   <head>
     <title>${title}</title>
   </head>
@@ -134,19 +142,22 @@ ${paragraphs.join('\n')}
 /**
  * @param {string} title
  * @param {{ label: string, href: string }[]} tocItems
+ * @param {{ htmlAttrs?: string, heading?: string }} [options]
  */
-function navXhtml(title, tocItems) {
+function navXhtml(title, tocItems, options = {}) {
+  const htmlAttrs = options.htmlAttrs ?? ''
+  const heading = options.heading ?? 'Contents'
   const items = tocItems
     .map(({ label, href }) => `        <li><a href="${href}">${label}</a></li>`)
     .join('\n')
   return `<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"${htmlAttrs}>
   <head>
     <title>${title}</title>
   </head>
   <body>
     <nav epub:type="toc">
-      <h1>Contents</h1>
+      <h1>${heading}</h1>
       <ol>
 ${items}
       </ol>
@@ -168,6 +179,46 @@ function coverSvg(title, background) {
 `
 }
 
+/**
+ * @param {{
+ *   identifier: string,
+ *   title: string,
+ *   creator: string,
+ *   language: string,
+ *   chapters: { file: string }[],
+ *   spineAttrs?: string,
+ * }} meta
+ */
+function packageOpf({ identifier, title, creator, language, chapters, spineAttrs = '' }) {
+  const manifestItems = [
+    '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
+    '    <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>',
+    ...chapters.map(
+      (chapter, i) =>
+        `    <item id="chapter${i + 1}" href="${chapter.file}" media-type="application/xhtml+xml"/>`,
+    ),
+  ].join('\n')
+  const spineItems = chapters.map((_, i) => `    <itemref idref="chapter${i + 1}"/>`).join('\n')
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">${identifier}</dc:identifier>
+    <dc:title>${title}</dc:title>
+    <dc:creator>${creator}</dc:creator>
+    <dc:language>${language}</dc:language>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+${manifestItems}
+  </manifest>
+  <spine${spineAttrs}>
+${spineItems}
+  </spine>
+</package>
+`
+}
+
 /** @typedef {{ filename: string, entries: ZipEntry[] }} Book */
 
 /** @returns {Book} */
@@ -179,41 +230,22 @@ function basicLtr() {
     { file: 'chapter3.xhtml', title: 'Chapter Three' },
   ]
 
-  const manifestItems = [
-    '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
-    '    <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>',
-    ...chapters.map(
-      (chapter, i) =>
-        `    <item id="chapter${i + 1}" href="${chapter.file}" media-type="application/xhtml+xml"/>`,
-    ),
-  ].join('\n')
-  const spineItems = chapters.map((_, i) => `    <itemref idref="chapter${i + 1}"/>`).join('\n')
-
-  const packageOpf = `<?xml version="1.0" encoding="utf-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="pub-id">urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>
-    <dc:title>${title}</dc:title>
-    <dc:creator>Fixture Author</dc:creator>
-    <dc:language>en</dc:language>
-    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
-  </metadata>
-  <manifest>
-${manifestItems}
-  </manifest>
-  <spine>
-${spineItems}
-  </spine>
-</package>
-`
-
   return {
     filename: 'basic-ltr.epub',
     entries: [
       // The mimetype entry must come first, exactly this content, no newline.
       { name: 'mimetype', data: 'application/epub+zip' },
       { name: 'META-INF/container.xml', data: CONTAINER_XML },
-      { name: 'OEBPS/package.opf', data: packageOpf },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000001',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters,
+        }),
+      },
       {
         name: 'OEBPS/nav.xhtml',
         data: navXhtml(
@@ -230,7 +262,53 @@ ${spineItems}
   }
 }
 
-const books = [basicLtr]
+/** @returns {Book} */
+function rtlBook() {
+  const title = 'كتاب تجريبي'
+  const chapters = [
+    { file: 'chapter1.xhtml', title: 'الفصل الأول' },
+    { file: 'chapter2.xhtml', title: 'الفصل الثاني' },
+    { file: 'chapter3.xhtml', title: 'الفصل الثالث' },
+  ]
+
+  return {
+    filename: 'rtl-book.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000002',
+          title,
+          creator: 'مؤلف الكتاب',
+          language: 'ar',
+          chapters,
+          spineAttrs: ' page-progression-direction="rtl"',
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(
+          title,
+          chapters.map((chapter) => ({ label: chapter.title, href: chapter.file })),
+          { htmlAttrs: ' dir="rtl"', heading: 'المحتويات' },
+        ),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('كتاب', '#553366') },
+      ...chapters.map((chapter) => ({
+        name: `OEBPS/${chapter.file}`,
+        data: chapterXhtml(chapter.title, 16, {
+          htmlAttrs: ' dir="rtl" xml:lang="ar" lang="ar"',
+          paragraphText: (i) => `الفقرة ${i} من ${chapter.title}. ${PARAGRAPH_BODY_AR}`,
+        }),
+      })),
+    ],
+  }
+}
+
+const books = [basicLtr, rtlBook]
 
 mkdirSync(outDir, { recursive: true })
 for (const makeBook of books) {
