@@ -67,7 +67,7 @@ foliate-js has **no persistence** — it renders from a `File`/`Blob`, a URL, or
 
 - **Book bytes**: OPFS (Origin Private File System) when available, IndexedDB fallback otherwise. Feature-detect (including `createWritable` support); one `BookStorage` interface, two implementations. OPFS matters beyond durability: its `File` objects give foliate's zip.js random-access reads, so large books open without loading fully into memory.
 - **Per-book metadata** (reading position as EPUB CFI string, title/author/cover-thumb for the library view, scripting-consent flag, last-opened timestamp): a single IndexedDB object store keyed by a content hash of the book file (hash the bytes on import; this also dedupes re-imports).
-- **App state** (settings, last-open book id, saved catalog URLs): localStorage under `readhtml_*` keys, each read/write wrapped in try/catch with defaults on failure.
+- **App state** (settings, last-open book id, saved catalog URLs): localStorage under `readhtml_*` keys, each read/write wrapped in try/catch with defaults on failure. _(Amendment, M2: this module lands with its first consumer — the settings store at M3 — rather than shipping as dead code in M2.)_
 - Storage keys and DB names are constants in one module. No other file mentions them.
 
 ### 3.3 Reader integration
@@ -147,7 +147,7 @@ The design reference is the **PDF.js viewer built into Firefox**: chrome so plai
 - **M3 comfort**: scroll mode, font size, themes.
 - **M4 direction**: RTL fixture paging correctly, logical nav, UI dir switching.
 - **M5 scripts**: consent gate end-to-end against scripted fixtures (§6), including the strip path and the graceful-degradation assertion.
-- **M6 catalog**: OPDS browse/download, deep links, CORS error UX.
+- **M6 catalog**: OPDS browse/download, deep links, CORS error UX. _(Amendment, M2: drag-drop import from feature 1 — unassigned in the original milestone list — lands here alongside `?book=`, completing feature 1's three open paths.)_
 - **M7 ship**: single-file build target, size budget check (fail CI if `READ.html` exceeds 1.5 MB), README, deploy pipeline.
 
 ## 6. Test fixtures
