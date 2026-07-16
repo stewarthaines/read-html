@@ -160,7 +160,9 @@ export function fetchFailure(url: string, subject: 'catalog' | 'book'): Error {
 export async function fetchCatalog(url: string): Promise<CatalogFeed> {
   let response: Response
   try {
-    response = await fetch(url)
+    // no-store: catalogs are living listings, and a cached no-Origin response
+    // (no CORS header, no Vary) would otherwise poison future CORS reads.
+    response = await fetch(url, { cache: 'no-store' })
   } catch {
     throw fetchFailure(url, 'catalog')
   }

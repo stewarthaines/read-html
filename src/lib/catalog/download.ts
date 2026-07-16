@@ -15,7 +15,9 @@ export async function downloadBook(
 ): Promise<BookRecord> {
   let response: Response
   try {
-    response = await fetch(href)
+    // no-store: fetched once then stored content-hashed; HTTP caching buys
+    // nothing and a cached no-Origin response would poison CORS reads.
+    response = await fetch(href, { cache: 'no-store' })
   } catch {
     throw fetchFailure(href, 'book')
   }
