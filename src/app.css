@@ -1,0 +1,14 @@
+/* App-chrome design tokens (§3.8: system everything, no look of its own). */
+:root {
+  color-scheme: light dark;
+  --app-bg: Canvas;
+  --app-fg: CanvasText;
+  --app-accent: AccentColor;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-fg);
+}
