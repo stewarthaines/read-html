@@ -2,6 +2,17 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## M4 — direction
+
+Accepted when all of the following hold (e2e: `e2e/rtl.spec.ts`; unit: `tests/i18n.test.ts`):
+
+- `rtl-book.epub` fixture (§6): `page-progression-direction="rtl"`, `dir="rtl"` Arabic text, three chapters, nav TOC, cover; deterministic like the rest of the generator.
+- Opening the RTL fixture pages right-to-left: "next" moves leftward. The toolbar Previous/Next controls are logical (`prev()`/`next()`), keep their logical labels, and swap their arrow glyphs to match the book's physical direction.
+- Keyboard stays physical-to-logical: ArrowLeft is _next_ in an RTL book, ArrowRight _previous_ (foliate `goLeft`/`goRight`); PageDown/PageUp/Space remain logical. Asserted by e2e against the RTL fixture.
+- TOC navigation works in the RTL book (labels render, entries navigate).
+- UI is RTL-ready: the i18n store carries a reactive locale; switching to an RTL locale sets `dir="rtl"` and `lang` on the document element (unit-tested; English remains the only shipped catalog). App styles use logical properties throughout.
+- Visual snapshot: RTL reader first page (column order and text alignment are the point).
+
 ## M3 — comfort
 
 Accepted when all of the following hold (e2e: `e2e/settings.spec.ts`; unit: `tests/settings.test.ts`, `tests/theme.test.ts`):
