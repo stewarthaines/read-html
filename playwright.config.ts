@@ -23,6 +23,18 @@ export default defineConfig({
     // WebKit is first-class: the audience reads in Safari-family engines.
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     // Firefox is best-effort: runs locally; CI runs it as a non-blocking job.
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // The prefs let media playback start in containers without an audio sink.
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        launchOptions: {
+          firefoxUserPrefs: {
+            'media.autoplay.default': 0,
+            'media.autoplay.blocking_policy': 0,
+          },
+        },
+      },
+    },
   ],
 })

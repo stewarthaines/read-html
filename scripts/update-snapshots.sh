@@ -15,7 +15,10 @@ docker run --rm --ipc=host -v "$PWD":/repo "$IMAGE" sh -c '
   cp -r /repo /work && cd /work
   rm -rf node_modules test-results playwright-report
   npm ci
-  CI=1 npx playwright test --update-snapshots
+  CI=1 npx playwright test --project=chromium --project=webkit --update-snapshots
+  # Firefox is best-effort (BOOTSTRAP §7), mirroring the non-blocking CI job.
+  CI=1 npx playwright test --project=firefox --update-snapshots || \
+    echo "firefox (best-effort) had failures; its baselines still updated"
   mkdir -p /repo/e2e/__snapshots__
   cp -r /work/e2e/__snapshots__/. /repo/e2e/__snapshots__/
 '
