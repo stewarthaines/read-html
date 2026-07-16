@@ -2,6 +2,7 @@ import { t } from '../i18n/index.svelte'
 import { importBook } from '../library/import'
 import { updateBook } from '../storage/metadata'
 import type { BookRecord, BookStorage } from '../storage/types'
+import { fetchFailure } from './feed'
 
 // Download a book by URL — catalog acquisition links and ?book= deep links
 // (§3.7) share this path. The href is fetched as-is (CORS applies, no
@@ -16,11 +17,7 @@ export async function downloadBook(
   try {
     response = await fetch(href)
   } catch {
-    throw new Error(
-      t(
-        'Could not download the book. Its server may not allow cross-origin (CORS) access from this reader.',
-      ),
-    )
+    throw fetchFailure(href, 'book')
   }
   if (!response.ok) {
     throw new Error(t('The book could not be downloaded.') + ` (HTTP ${response.status})`)

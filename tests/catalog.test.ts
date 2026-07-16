@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { parseCatalog } from '../src/lib/catalog/feed'
+import { fetchFailure, parseCatalog } from '../src/lib/catalog/feed'
 
 const FEED_URL = 'http://127.0.0.1:4174/catalog.xml'
 const fixtureXml = () => readFileSync('fixtures/build/catalog.xml', 'utf8')
@@ -45,6 +45,14 @@ test('navigation entries become browsable sub-feed links', () => {
       href: 'http://example.test/fiction.xml',
     }),
   ])
+})
+
+test('fetch failures name CORS only for cross-origin URLs', () => {
+  // jsdom's location is http://localhost:3000 by default under vitest.
+  expect(fetchFailure('http://other.example/catalog.xml', 'catalog').message).toContain('CORS')
+  expect(fetchFailure(`${location.origin}/catalog.xml`, 'catalog').message).not.toContain('CORS')
+  expect(fetchFailure('http://other.example/a.epub', 'book').message).toContain('CORS')
+  expect(fetchFailure(`${location.origin}/a.epub`, 'book').message).not.toContain('CORS')
 })
 
 test('an OPDS 2.0 JSON feed parses through the same normalization', () => {

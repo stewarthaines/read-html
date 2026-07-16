@@ -124,20 +124,45 @@ export function parseCatalog(body: string, url: string): CatalogFeed {
 }
 
 /**
+ * A rejected fetch is a network-level failure: for a cross-origin URL the
+ * likeliest cause is a missing CORS header (name it — the publisher controls
+ * it, §3.7); for a same-origin URL CORS is impossible, so don't mislead.
+ */
+export function fetchFailure(url: string, subject: 'catalog' | 'book'): Error {
+  let crossOrigin = true
+  try {
+    crossOrigin = new URL(url, location.href).origin !== location.origin
+  } catch {
+    // Unparseable URL: keep the cross-origin wording; it is still a fetch failure.
+  }
+  if (subject === 'catalog') {
+    return new Error(
+      crossOrigin
+        ? t(
+            'Could not reach the catalog. Its server may not allow cross-origin (CORS) access from this reader.',
+          )
+        : t('Could not reach the catalog server.'),
+    )
+  }
+  return new Error(
+    crossOrigin
+      ? t(
+          'Could not download the book. Its server may not allow cross-origin (CORS) access from this reader.',
+        )
+      : t('Could not download the book.'),
+  )
+}
+
+/**
  * Fetches and parses a catalog. No proxy (§3.7): the catalog host must be
- * CORS-readable from the reader's origin; a network-level failure is
- * reported naming CORS as the likely cause.
+ * CORS-readable from the reader's origin.
  */
 export async function fetchCatalog(url: string): Promise<CatalogFeed> {
   let response: Response
   try {
     response = await fetch(url)
   } catch {
-    throw new Error(
-      t(
-        'Could not reach the catalog. Its server may not allow cross-origin (CORS) access from this reader.',
-      ),
-    )
+    throw fetchFailure(url, 'catalog')
   }
   if (!response.ok) {
     throw new Error(t('The catalog could not be loaded.') + ` (HTTP ${response.status})`)
