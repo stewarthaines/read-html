@@ -69,6 +69,7 @@ foliate-js has **no persistence** — it renders from a `File`/`Blob`, a URL, or
 - **Per-book metadata** (reading position as EPUB CFI string, title/author/cover-thumb for the library view, scripting-consent flag, last-opened timestamp): a single IndexedDB object store keyed by a content hash of the book file (hash the bytes on import; this also dedupes re-imports).
 - **App state** (settings, last-open book id, saved catalog URLs): localStorage under `readhtml_*` keys, each read/write wrapped in try/catch with defaults on failure. _(Amendment, M2: this module lands with its first consumer — the settings store at M3 — rather than shipping as dead code in M2.)_
 - Storage keys and DB names are constants in one module. No other file mentions them.
+- _(Amendment, M3: **Safari evicts all script-writable storage — OPFS and IndexedDB alike, so neither backend escapes — after seven days without a visit.** An editor user returns often; a reader who imports a book and comes back three weeks later finds an empty library, a genuinely bad experience the storage backend cannot prevent. Mitigations to specify in SPEC.md when scheduled: call `navigator.storage.persist()` at first import; surface `navigator.storage.estimate()` in settings; and treat the library as re-importable rather than precious — content-hash keying already means re-importing the same file restores its identity, and position metadata could additionally survive in localStorage's more durable tier. Reader-facing docs should not let this surprise anyone.)_
 
 ### 3.3 Reader integration
 
