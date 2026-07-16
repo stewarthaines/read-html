@@ -2,6 +2,19 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## M2 — persist
+
+Accepted when all of the following hold (e2e: `e2e/library.spec.ts`; unit: `tests/storage.test.ts`, `tests/metadata.test.ts`):
+
+- Importing an EPUB via the file picker persists it and opens it. Book bytes go to OPFS when available — feature-detected, including `createWritable` support — otherwise to IndexedDB: one `BookStorage` interface, two implementations, both unit-tested (OPFS against an in-memory mock, IDB against fake-indexeddb).
+- Book identity is the SHA-256 hex hash of the file bytes. Re-importing the same file creates no duplicate (the existing record's last-opened timestamp updates).
+- Per-book metadata lives in a single IndexedDB object store: id, title, author (normalized display strings), cover thumbnail, reading position (EPUB CFI string), fraction (library progress display), scripting-consent flag (consumed at M5), last-opened and added timestamps. Storage keys and DB names are constants in `src/lib/storage/keys.ts`; no other module mentions them.
+- Library view (the start screen): each imported book shows cover, title, author, and reading progress percentage, ordered by last opened; activating a book opens it at its saved position; a delete control (native `confirm()`) removes bytes and metadata. With no books, only the file picker shows.
+- Reading position: relocate CFIs persist debounced while reading and flush on leaving the reader; reopening a book restores the exact position (e2e round-trips the fraction, including across a page reload).
+- The reader toolbar gains a back-to-library control.
+- CFI persistence round-trip is unit-tested (the stored string survives put/get verbatim).
+- Accessibility: axe passes on the library with books present. Visual snapshot: library view with one imported book.
+
 ## M1 — render
 
 Accepted when all of the following hold (e2e: `e2e/reader.spec.ts`, `e2e/visual.spec.ts`; unit: `tests/strip.test.ts`):
