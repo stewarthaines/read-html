@@ -19,6 +19,7 @@
     "test:unit": "vitest run",
     "vendor-check": "node scripts/vendor-check.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:webkit": "sh scripts/e2e-webkit.sh",
     "test:e2e:update": "sh scripts/update-snapshots.sh"
   },
   "devDependencies": {
