@@ -3,7 +3,13 @@
   import { t } from '../i18n'
   import { openBook, type FoliateViewElement, type TocItem } from './foliate'
 
-  let { file }: { file: File } = $props()
+  interface Props {
+    file: Blob
+    initialPosition?: string | null
+    onrelocate: (location: { cfi: string; fraction: number }) => void
+    onclose: () => void
+  }
+  let { file, initialPosition = null, onrelocate, onclose }: Props = $props()
 
   let container: HTMLDivElement
   let tocDialog: HTMLDialogElement
@@ -18,7 +24,13 @@
 
   onMount(() => {
     let disposed: FoliateViewElement | undefined
-    openBook(file, container, handleSectionLoad)
+    openBook({
+      file,
+      container,
+      lastLocation: initialPosition,
+      onSectionLoad: handleSectionLoad,
+      onRelocate: onrelocate,
+    })
       .then((opened) => {
         view = opened
         disposed = opened
@@ -91,6 +103,7 @@
 
 <div class="reader">
   <header class="toolbar">
+    <button onclick={onclose} aria-label={t('Library')} title={t('Library')}>←</button>
     <button onclick={() => tocDialog.showModal()} aria-label={t('Contents')} title={t('Contents')}
       >☰</button
     >

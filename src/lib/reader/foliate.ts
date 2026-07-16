@@ -12,10 +12,11 @@ export interface TocItem {
 }
 
 interface FoliateBook {
-  metadata?: { title?: unknown }
+  metadata?: { title?: unknown; author?: unknown }
   toc?: TocItem[]
   dir?: string
   transformTarget: EventTarget
+  getCover?: () => Promise<Blob | null>
 }
 
 interface Relocation {
@@ -58,19 +59,62 @@ function attachScriptStripping(book: FoliateBook): void {
   })
 }
 
-export async function openBook(
-  file: File,
-  container: HTMLElement,
-  onSectionLoad: (doc: Document) => void,
-): Promise<FoliateViewElement> {
+// EPUB metadata values may be language maps ({lang: text}) rather than
+// strings; contributors are objects with a `name` language map.
+function languageMapText(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    const first = Object.values(value)[0] as unknown
+    if (typeof first === 'string') return first
+  }
+  return ''
+}
+
+function contributorsText(value: unknown): string {
+  const list = Array.isArray(value) ? value : value ? [value] : []
+  return list
+    .map((entry) => languageMapText((entry as { name?: unknown })?.name ?? entry))
+    .filter(Boolean)
+    .join(', ')
+}
+
+export interface BookInfo {
+  title: string
+  author: string
+  cover: Blob | null
+}
+
+export async function readBookInfo(file: Blob): Promise<BookInfo> {
   const book = (await makeBook(file)) as FoliateBook
+  return {
+    title: languageMapText(book.metadata?.title),
+    author: contributorsText(book.metadata?.author),
+    cover: (await book.getCover?.()) ?? null,
+  }
+}
+
+export interface OpenBookOptions {
+  file: Blob
+  container: HTMLElement
+  /** EPUB CFI to restore; omit to start from the beginning. */
+  lastLocation?: string | null
+  onSectionLoad: (doc: Document) => void
+  onRelocate: (location: Relocation) => void
+}
+
+export async function openBook(options: OpenBookOptions): Promise<FoliateViewElement> {
+  const book = (await makeBook(options.file)) as FoliateBook
   attachScriptStripping(book)
   const view = document.createElement('foliate-view') as FoliateViewElement
   view.addEventListener('load', (event) => {
-    onSectionLoad((event as CustomEvent<SectionLoadDetail>).detail.doc)
+    options.onSectionLoad((event as CustomEvent<SectionLoadDetail>).detail.doc)
   })
-  container.append(view)
+  view.addEventListener('relocate', (event) => {
+    const { cfi, fraction } = (event as CustomEvent<Relocation>).detail
+    options.onRelocate({ cfi, fraction })
+  })
+  options.container.append(view)
   await view.open(book)
-  await view.init({})
+  await view.init({ lastLocation: options.lastLocation ?? undefined })
   return view
 }
