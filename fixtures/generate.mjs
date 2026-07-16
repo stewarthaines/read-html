@@ -185,20 +185,39 @@ function coverSvg(title, background) {
  *   title: string,
  *   creator: string,
  *   language: string,
- *   chapters: { file: string }[],
+ *   chapters: { file: string, properties?: string, spineProperties?: string }[],
  *   spineAttrs?: string,
+ *   extraManifest?: string[],
  * }} meta
  */
-function packageOpf({ identifier, title, creator, language, chapters, spineAttrs = '' }) {
+function packageOpf({
+  identifier,
+  title,
+  creator,
+  language,
+  chapters,
+  spineAttrs = '',
+  extraManifest = [],
+}) {
   const manifestItems = [
     '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
     '    <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>',
     ...chapters.map(
       (chapter, i) =>
-        `    <item id="chapter${i + 1}" href="${chapter.file}" media-type="application/xhtml+xml"/>`,
+        `    <item id="chapter${i + 1}" href="${chapter.file}" media-type="application/xhtml+xml"${
+          chapter.properties ? ` properties="${chapter.properties}"` : ''
+        }/>`,
     ),
+    ...extraManifest,
   ].join('\n')
-  const spineItems = chapters.map((_, i) => `    <itemref idref="chapter${i + 1}"/>`).join('\n')
+  const spineItems = chapters
+    .map(
+      (chapter, i) =>
+        `    <itemref idref="chapter${i + 1}"${
+          chapter.spineProperties ? ` properties="${chapter.spineProperties}"` : ''
+        }/>`,
+    )
+    .join('\n')
 
   return `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
@@ -308,7 +327,220 @@ function rtlBook() {
   }
 }
 
-const books = [basicLtr, rtlBook]
+// --- Scripted fixtures (§6): the publisher content contract, and a hostile book ---
+
+/**
+ * Deterministic WAV: mono 8-bit PCM, 8000 Hz, 2.0 s, 440 Hz sine.
+ * @returns {Buffer}
+ */
+function wavTone() {
+  const sampleRate = 8000
+  const sampleCount = sampleRate * 2
+  const wav = Buffer.alloc(44 + sampleCount)
+  wav.write('RIFF', 0, 'ascii')
+  wav.writeUInt32LE(36 + sampleCount, 4)
+  wav.write('WAVE', 8, 'ascii')
+  wav.write('fmt ', 12, 'ascii')
+  wav.writeUInt32LE(16, 16) // fmt chunk size
+  wav.writeUInt16LE(1, 20) // PCM
+  wav.writeUInt16LE(1, 22) // mono
+  wav.writeUInt32LE(sampleRate, 24)
+  wav.writeUInt32LE(sampleRate, 28) // byte rate (8-bit mono)
+  wav.writeUInt16LE(1, 32) // block align
+  wav.writeUInt16LE(8, 34) // bits per sample
+  wav.write('data', 36, 'ascii')
+  wav.writeUInt32LE(sampleCount, 40)
+  for (let i = 0; i < sampleCount; i++) {
+    wav[44 + i] = Math.round(128 + 63 * Math.sin((2 * Math.PI * 440 * i) / sampleRate))
+  }
+  return wav
+}
+
+const CLIP_STYLE = `span.clip {
+  border-bottom: 2px dotted currentColor;
+  cursor: pointer;
+}
+span.clip.clip-playing {
+  outline: 2px solid currentColor;
+}
+`
+
+// The contract player (docs/CONTENT_CONVENTIONS.md), verbatim: resolves
+// data-src relative to the chapter unless it already carries a URL scheme,
+// plays every clip through the one static <audio>, toggles clip-playing,
+// publishes --clip-duration.
+const PLAYER_JS = `// Book player script implementing the READ.html content contract
+// (docs/CONTENT_CONVENTIONS.md): clip spans play ranges of one shared
+// static <audio> element. Linked from <head>, so it waits for the DOM.
+;(function () {
+  'use strict'
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init)
+  } else {
+    init()
+  }
+
+  function init() {
+  var audio = document.getElementById('clip-audio')
+  if (!audio) return
+  var active = null
+  var stopAt = Infinity
+
+  // Eagerly resolve the first clip at startup, like real players that prime
+  // the shared element before any tap. In READ.html this requires data-src
+  // to carry a URL scheme BEFORE book scripts run; if it is still relative,
+  // resolveSrc below throws against the blob: base and the player never
+  // wires its click handler — a loud regression.
+  var firstClip = document.querySelector('span.clip[data-src]')
+  if (firstClip) audio.src = resolveSrc(firstClip.getAttribute('data-src'))
+
+  function parseTime(value) {
+    if (!value) return 0
+    var parts = String(value).split(':')
+    var seconds = 0
+    for (var i = 0; i < parts.length; i++) seconds = seconds * 60 + parseFloat(parts[i])
+    return seconds
+  }
+
+  function resolveSrc(value) {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value
+    return new URL(value, document.baseURI).href
+  }
+
+  function stop() {
+    audio.pause()
+    if (active) active.classList.remove('clip-playing')
+    active = null
+  }
+
+  audio.addEventListener('timeupdate', function () {
+    if (active && audio.currentTime >= stopAt) stop()
+  })
+
+  document.addEventListener('click', function (event) {
+    var span = event.target.closest('span.clip')
+    if (!span) return
+    var begin = parseTime(span.getAttribute('data-begin'))
+    var end = span.getAttribute('data-end')
+    stopAt = end ? parseTime(end) : Infinity
+    var src = resolveSrc(span.getAttribute('data-src'))
+    if (audio.src !== src) audio.src = src
+    audio.playbackRate = parseFloat(span.getAttribute('data-rate') || '1')
+    if (active) active.classList.remove('clip-playing')
+    active = span
+    span.classList.add('clip-playing')
+    span.style.setProperty('--clip-duration', String(Math.max(0, stopAt - begin)) + 's')
+    audio.currentTime = begin
+    audio.play()
+  })
+  }
+})()
+`
+
+const CLIPS_CHAPTER = `<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Clips Chapter</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <script src="player.js"></script>
+  </head>
+  <body>
+    <h1>Clips Chapter</h1>
+    <p>This chapter has audio clips. Tap a clip to play it.</p>
+    <p><span class="clip" data-src="audio/tone.wav" data-begin="0" data-end="1">Play the first clip</span></p>
+    <p><span class="clip" data-src="audio/tone.wav" data-begin="1" data-end="2" data-rate="1">Play the second clip</span></p>
+    <p><span class="clip" data-src="missing/nowhere.mp3" data-begin="0" data-end="1">Broken clip</span></p>
+    <audio id="clip-audio" src="audio/tone.wav" preload="auto"></audio>
+  </body>
+</html>
+`
+
+const HOSTILE_CHAPTER = `<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Hostile Chapter</title>
+  </head>
+  <body onload="localStorage.setItem('readhtml_hostile_onload', 'executed')">
+    <h1>Hostile Chapter</h1>
+    <p>This book attempts to write to storage when its scripts run.</p>
+    <script>try { localStorage.setItem('readhtml_hostile_marker', 'executed') } catch (e) {}</script>
+  </body>
+</html>
+`
+
+/** @returns {Book} */
+function scriptedClips() {
+  const title = 'Clips Book'
+  return {
+    filename: 'scripted-clips.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000003',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          // The publisher contract (§8) declares scripted on the spine
+          // itemref; the EPUB 3 spec puts it on the manifest item. Both.
+          chapters: [
+            { file: 'chapter1.xhtml', properties: 'scripted', spineProperties: 'scripted' },
+          ],
+          extraManifest: [
+            '    <item id="style" href="style.css" media-type="text/css"/>',
+            '    <item id="player" href="player.js" media-type="application/javascript"/>',
+            '    <item id="tone" href="audio/tone.wav" media-type="audio/wav"/>',
+          ],
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(title, [{ label: 'Clips Chapter', href: 'chapter1.xhtml' }]),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('Clips', '#336655') },
+      { name: 'OEBPS/chapter1.xhtml', data: CLIPS_CHAPTER },
+      { name: 'OEBPS/style.css', data: CLIP_STYLE },
+      { name: 'OEBPS/player.js', data: PLAYER_JS },
+      { name: 'OEBPS/audio/tone.wav', data: wavTone() },
+    ],
+  }
+}
+
+/** @returns {Book} */
+function hostileBook() {
+  const title = 'Hostile Book'
+  return {
+    filename: 'scripted-hostile.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000004',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters: [
+            { file: 'chapter1.xhtml', properties: 'scripted', spineProperties: 'scripted' },
+          ],
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(title, [{ label: 'Hostile Chapter', href: 'chapter1.xhtml' }]),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('Hostile', '#663333') },
+      { name: 'OEBPS/chapter1.xhtml', data: HOSTILE_CHAPTER },
+    ],
+  }
+}
+
+const books = [basicLtr, rtlBook, scriptedClips, hostileBook]
 
 mkdirSync(outDir, { recursive: true })
 for (const makeBook of books) {
