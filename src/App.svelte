@@ -7,7 +7,7 @@
   import { importBook } from './lib/library/import'
   import Reader from './lib/reader/Reader.svelte'
   import { createBookStorage } from './lib/storage/index'
-  import { deleteBook, listBooks, updateBook } from './lib/storage/metadata'
+  import { deleteBook, getBook, listBooks, updateBook } from './lib/storage/metadata'
   import type { BookRecord } from './lib/storage/types'
   import { debounce } from './lib/util/debounce'
 
@@ -17,6 +17,7 @@
     id: string
     file: Blob
     position: string | null
+    scriptingConsent: boolean | undefined
   }
 
   const storage = createBookStorage()
@@ -41,21 +42,36 @@
     error = ''
     try {
       const record = await importBook(await storage, file)
-      current = { id: record.id, file, position: record.position }
+      lastCfi = null
+      current = {
+        id: record.id,
+        file,
+        position: record.position,
+        scriptingConsent: record.scriptingConsent,
+      }
     } catch (cause) {
       error = t('This book could not be opened.') + ' ' + String(cause)
     }
   }
 
-  async function handleOpen(record: BookRecord): Promise<void> {
+  async function handleOpen(listed: BookRecord): Promise<void> {
     error = ''
+    // Re-read the record: consent may have changed in settings since the
+    // library list was loaded.
+    const record = (await getBook(listed.id)) ?? listed
     const file = await (await storage).get(record.id)
     if (!file) {
       error = t('This book is missing from storage.')
       return
     }
     await updateBook(record.id, { lastOpened: Date.now() })
-    current = { id: record.id, file, position: record.position }
+    lastCfi = null
+    current = {
+      id: record.id,
+      file,
+      position: record.position,
+      scriptingConsent: record.scriptingConsent,
+    }
   }
 
   async function handleDelete(record: BookRecord): Promise<void> {
@@ -67,12 +83,33 @@
 
   // Reading position persists debounced (§3.3) and flushes on close so the
   // last relocate is never lost.
+  let lastCfi: string | null = null
   const persistPosition = debounce((id: string, cfi: string, fraction: number) => {
     void updateBook(id, { position: cfi, fraction })
   }, 500)
 
   function handleRelocate(location: { cfi: string; fraction: number }): void {
+    lastCfi = location.cfi
     if (current) persistPosition(current.id, location.cfi, location.fraction)
+  }
+
+  // §3.4: both answers persist to the book's record. A grant re-renders the
+  // book with scripts at the current position (replacing `current` remounts
+  // the keyed reader); a denial changes nothing visible — it is already
+  // rendered stripped.
+  async function handleConsent(granted: boolean): Promise<void> {
+    if (!current) return
+    await updateBook(current.id, { scriptingConsent: granted })
+    if (granted) {
+      persistPosition.flush()
+      current = {
+        ...current,
+        position: lastCfi ?? current.position,
+        scriptingConsent: true,
+      }
+    } else {
+      current.scriptingConsent = false
+    }
   }
 
   async function handleClose(): Promise<void> {
@@ -83,12 +120,16 @@
 </script>
 
 {#if current}
-  <Reader
-    file={current.file}
-    initialPosition={current.position}
-    onrelocate={handleRelocate}
-    onclose={handleClose}
-  />
+  {#key current}
+    <Reader
+      file={current.file}
+      initialPosition={current.position}
+      scriptingConsent={current.scriptingConsent}
+      onrelocate={handleRelocate}
+      onconsent={handleConsent}
+      onclose={handleClose}
+    />
+  {/key}
 {:else}
   {#if error}
     <p role="alert">{error}</p>

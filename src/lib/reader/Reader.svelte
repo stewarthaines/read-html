@@ -4,18 +4,30 @@
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import { settings } from '../settings/index.svelte'
   import { bookContentCss } from '../theme/book'
-  import { openBook, type FoliateViewElement, type TocItem } from './foliate'
+  import { decideScripting } from '../scripting/consent'
+  import { bookIsScripted, openBook, type FoliateViewElement, type TocItem } from './foliate'
 
   interface Props {
     file: Blob
     initialPosition?: string | null
+    /** Recorded scripting consent from the book's metadata record (§3.4). */
+    scriptingConsent?: boolean | undefined
     onrelocate: (location: { cfi: string; fraction: number }) => void
+    onconsent: (granted: boolean) => void
     onclose: () => void
   }
-  let { file, initialPosition = null, onrelocate, onclose }: Props = $props()
+  let {
+    file,
+    initialPosition = null,
+    scriptingConsent = undefined,
+    onrelocate,
+    onconsent,
+    onclose,
+  }: Props = $props()
 
   let container: HTMLDivElement
   let tocDialog: HTMLDialogElement
+  let consentDialog: HTMLDialogElement
   let settingsDialog: SettingsDialog
   let view = $state<FoliateViewElement>()
   let error = $state('')
@@ -46,12 +58,18 @@
       lastLocation: initialPosition,
       flow: settings.flow,
       styles: bookContentCss(settings),
+      allowScripts: scriptingConsent === true,
       onSectionLoad: handleSectionLoad,
       onRelocate: onrelocate,
     })
       .then((opened) => {
         view = opened
         disposed = opened
+        // §3.4 step 3: a scripted book with no recorded answer renders
+        // stripped (that already happened) and asks once.
+        if (decideScripting(bookIsScripted(opened.book), scriptingConsent) === 'ask') {
+          consentDialog.showModal()
+        }
       })
       .catch((cause: unknown) => {
         error = t('This book could not be opened.') + ' ' + String(cause)
@@ -70,8 +88,13 @@
     doc.defaultView?.frameElement?.setAttribute('title', t('Book content'))
   }
 
+  function handleConsentAnswer(granted: boolean): void {
+    consentDialog.close()
+    onconsent(granted)
+  }
+
   function handleKeydown(event: KeyboardEvent): void {
-    if (tocDialog?.open || settingsDialog?.isOpen()) return
+    if (tocDialog?.open || consentDialog?.open || settingsDialog?.isOpen()) return
     // Keys aimed at form controls (selects, the file input, buttons) must
     // act on the control, never page the book.
     if (
@@ -153,7 +176,17 @@
 
 <SettingsDialog bind:this={settingsDialog} />
 
-<dialog bind:this={tocDialog} aria-label={t('Contents')}>
+<!-- §3.4 one-time consent prompt. Enable and Keep-off both persist via
+     onconsent; dismissing (Esc) records nothing and re-asks next open. -->
+<dialog bind:this={consentDialog} class="consent" aria-label={t('Interactive features')}>
+  <p>{t('This book has interactive features (audio, and similar). Enable them?')}</p>
+  <div class="consent-actions">
+    <button onclick={() => handleConsentAnswer(true)}>{t('Enable them')}</button>
+    <button onclick={() => handleConsentAnswer(false)}>{t('Keep them off')}</button>
+  </div>
+</dialog>
+
+<dialog bind:this={tocDialog} class="toc" aria-label={t('Contents')}>
   {#if toc.length > 0}
     <nav>
       {@render tocEntries(toc)}
@@ -213,7 +246,21 @@
     min-block-size: 0;
   }
 
-  dialog {
+  dialog.consent {
+    max-inline-size: 24rem;
+  }
+
+  .consent-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: end;
+  }
+
+  .consent-actions button {
+    font: inherit;
+  }
+
+  dialog.toc {
     margin: 0;
     max-block-size: 100svh;
     block-size: 100svh;
@@ -223,17 +270,17 @@
     min-inline-size: 16rem;
   }
 
-  dialog ul {
+  dialog.toc ul {
     list-style: none;
     padding-inline-start: 1rem;
     margin: 0.25rem 0;
   }
 
-  dialog nav > ul {
+  dialog.toc nav > ul {
     padding-inline-start: 0;
   }
 
-  dialog button {
+  dialog.toc button {
     background: none;
     border: none;
     color: LinkText;

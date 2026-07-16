@@ -1,15 +1,29 @@
 <script lang="ts">
   import { t } from '../i18n/index.svelte'
+  import { listBooks, updateBook } from '../storage/metadata'
+  import type { BookRecord } from '../storage/types'
   import { FONT_SIZE_MAX, FONT_SIZE_MIN, settings } from './index.svelte'
 
   let dialog: HTMLDialogElement
+  // §3.4 step 4: books with a recorded consent grant, revocable here.
+  let trusted = $state<BookRecord[]>([])
 
   export function open(): void {
     dialog.showModal()
+    void refreshTrusted()
   }
 
   export function isOpen(): boolean {
     return dialog?.open ?? false
+  }
+
+  async function refreshTrusted(): Promise<void> {
+    trusted = (await listBooks()).filter((book) => book.scriptingConsent === true)
+  }
+
+  async function revoke(book: BookRecord): Promise<void> {
+    await updateBook(book.id, { scriptingConsent: false })
+    trusted = trusted.filter((entry) => entry.id !== book.id)
   }
 </script>
 
@@ -41,6 +55,20 @@
         <option value="dark">{t('Dark')}</option>
       </select>
     </label>
+    {#if trusted.length > 0}
+      <section aria-label={t('Trusted books')}>
+        <h2>{t('Trusted books')}</h2>
+        <p>{t('These books may run their interactive features.')}</p>
+        <ul>
+          {#each trusted as book (book.id)}
+            <li>
+              <span>{book.title}</span>
+              <button type="button" onclick={() => revoke(book)}>{t('Revoke')}</button>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
     <button>{t('Close')}</button>
   </form>
 </dialog>
@@ -63,5 +91,31 @@
   button {
     align-self: end;
     font: inherit;
+  }
+
+  section h2 {
+    margin: 0.5rem 0 0;
+    font-size: 1rem;
+    font-weight: normal;
+  }
+
+  section p {
+    margin: 0.25rem 0;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, CanvasText 70%, Canvas);
+  }
+
+  section ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  section li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block: 0.25rem;
   }
 </style>
