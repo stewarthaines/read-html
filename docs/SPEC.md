@@ -2,6 +2,19 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## M6 — catalog
+
+Accepted when all of the following hold (e2e: `e2e/catalog.spec.ts`; unit: `tests/catalog.test.ts`, `tests/saved-catalogs.test.ts`):
+
+- Catalog view: add a catalog by URL (saving it), browse publications and navigation sub-feeds, covers from the feed's image links, download-to-library. Saved catalogs (localStorage `readhtml_catalogs`, key in `storage/keys.ts`, try/catch-wrapped) list with open, remove, and a per-catalog "Trust books from this catalog" toggle.
+- **URL-encoding correctness (§3.7)**: feed hrefs are used exactly as given, resolved with `new URL(href, base)`, never re-encoded. Unit tests pin `%20` staying `%20` (not `%2520`); e2e downloads `spaces in name.epub` through the fixture catalog end-to-end and reads it (internal `%20` hrefs included).
+- **No proxy; CORS is the publisher's job**: a failed catalog or book fetch shows a friendly error naming CORS as the likely cause. e2e asserts it against a no-CORS endpoint on the fixture server.
+- Deep links, read once at startup then cleared from the URL: `?book=<url>` fetches and opens an EPUB (imported to the library); `?catalog=<url>` opens the catalog browser pre-loaded.
+- Drag-drop import onto the library (per the M2 amendment), same pipeline as the picker.
+- Trust-this-catalog (§3.4 step 4): books downloaded from a trusted catalog record `scriptingConsent: true` at import (never overriding an explicit revocation); e2e: the clips book via a trusted catalog opens with scripts running and no prompt.
+- Fixtures (§6): `spaces in name.epub` (literal spaces in the zip names, `%20` in OPF/nav hrefs) and `catalog.xml` (OPDS 1.x Atom) whose acquisition hrefs carry `%20` and point at the real generated fixtures, plus a cover asset with a space in its name; served by the e2e fixture static server (CORS on, with a `/no-cors/` mirror).
+- Accessibility: axe passes on the catalog view. Visual snapshot: catalog with the fixture feed loaded.
+
 ## M5 — scripts (consent gate, §3.4 end-to-end)
 
 Accepted when all of the following hold (e2e: `e2e/scripts.spec.ts`; unit: `tests/consent.test.ts`, `tests/strip.test.ts`):
