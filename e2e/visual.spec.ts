@@ -28,6 +28,15 @@ test('reader: scrolled flow', async ({ page }) => {
   await expect(page).toHaveScreenshot('reader-scrolled.png')
 })
 
+test('reader: RTL book, first page', async ({ page }) => {
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/rtl-book.epub')
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'الفصل الأول' }),
+  ).toBeVisible()
+  await expect(page).toHaveScreenshot('reader-rtl.png')
+})
+
 test('library: one imported book', async ({ page }) => {
   await openFixture(page)
   await page.getByRole('button', { name: 'Library' }).click()
