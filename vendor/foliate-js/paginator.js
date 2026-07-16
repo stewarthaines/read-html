@@ -360,6 +360,10 @@ class View {
         }
     }
     expand() {
+        // READ.html patch: the ResizeObserver can fire before the iframe has
+        // a document (Firefox, during construction) and after teardown
+        // (queued callback once the iframe is removed). See VENDORED.md #5.
+        if (!this.document) return
         const { documentElement } = this.document
         if (this.#column) {
             const side = this.#vertical ? 'height' : 'width'
