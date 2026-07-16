@@ -1,8 +1,9 @@
+// @ts-check
 // Deterministic EPUB fixture generator. Zero npm dependencies: every ZIP entry
 // is STORED (no compression), which is valid per the EPUB OCF spec and avoids
 // needing a deflate implementation. Output is byte-identical across runs.
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const outDir = fileURLToPath(new URL('build/', import.meta.url))
@@ -188,6 +189,7 @@ function coverSvg(title, background) {
  *   chapters: { file: string, properties?: string, spineProperties?: string }[],
  *   spineAttrs?: string,
  *   extraManifest?: string[],
+ *   coverHref?: string,
  * }} meta
  */
 function packageOpf({
@@ -198,10 +200,11 @@ function packageOpf({
   chapters,
   spineAttrs = '',
   extraManifest = [],
+  coverHref = 'cover.svg',
 }) {
   const manifestItems = [
     '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
-    '    <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>',
+    `    <item id="cover" href="${coverHref}" media-type="image/svg+xml" properties="cover-image"/>`,
     ...chapters.map(
       (chapter, i) =>
         `    <item id="chapter${i + 1}" href="${chapter.file}" media-type="application/xhtml+xml"${
@@ -239,6 +242,7 @@ ${spineItems}
 }
 
 /** @typedef {{ filename: string, entries: ZipEntry[] }} Book */
+/** @typedef {{ filename: string, file: string }} PlainFile */
 
 /** @returns {Book} */
 function basicLtr() {
@@ -540,12 +544,110 @@ function hostileBook() {
   }
 }
 
-const books = [basicLtr, rtlBook, scriptedClips, hostileBook]
+/** @returns {Book} */
+function spacesInName() {
+  const title = 'Spaces In Name'
+  // ZIP entry names carry LITERAL spaces; OPF/nav hrefs reference them
+  // percent-encoded (hrefs are URLs; ZIP entry names are not). Readers must
+  // decode the href before looking up the container entry.
+  const chapters = [
+    { file: 'chapter%20one.xhtml', zipName: 'chapter one.xhtml', title: 'Chapter One' },
+    { file: 'chapter%20two.xhtml', zipName: 'chapter two.xhtml', title: 'Chapter Two' },
+  ]
+
+  return {
+    filename: 'spaces in name.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000005',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters,
+          coverHref: 'cover%20image.svg',
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(
+          title,
+          chapters.map((chapter) => ({ label: chapter.title, href: chapter.file })),
+        ),
+      },
+      { name: 'OEBPS/cover image.svg', data: coverSvg('Spaces', '#556633') },
+      ...chapters.map((chapter) => ({
+        name: `OEBPS/${chapter.zipName}`,
+        data: chapterXhtml(chapter.title, 16),
+      })),
+    ],
+  }
+}
+
+// --- Standalone (non-ZIP) fixtures: an OPDS catalog and a loose cover ---
+
+const CATALOG_XML = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Fixture Catalog</title>
+  <id>urn:uuid:00000000-0000-0000-0000-00000000c001</id>
+  <updated>2026-01-01T00:00:00Z</updated>
+  <entry>
+    <title>Spaces In Name</title>
+    <id>urn:uuid:00000000-0000-0000-0000-000000000005</id>
+    <updated>2026-01-01T00:00:00Z</updated>
+    <author><name>Fixture Author</name></author>
+    <summary>A book whose file name and internal hrefs contain spaces.</summary>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="spaces%20in%20name.epub"/>
+    <link rel="http://opds-spec.org/image" type="image/svg+xml" href="covers/spaces%20cover.svg"/>
+  </entry>
+  <entry>
+    <title>Basic LTR</title>
+    <id>urn:uuid:00000000-0000-0000-0000-000000000001</id>
+    <updated>2026-01-01T00:00:00Z</updated>
+    <author><name>Fixture Author</name></author>
+    <summary>A plain three-chapter book.</summary>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="basic-ltr.epub"/>
+  </entry>
+  <entry>
+    <title>Clips Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-000000000003</id>
+    <updated>2026-01-01T00:00:00Z</updated>
+    <author><name>Fixture Author</name></author>
+    <summary>A scripted book with audio clips.</summary>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="scripted-clips.epub"/>
+  </entry>
+</feed>
+`
+
+/** @returns {PlainFile} */
+function opdsCatalog() {
+  return { filename: 'catalog.xml', file: CATALOG_XML }
+}
+
+/** @returns {PlainFile} */
+function spacesCover() {
+  return { filename: 'covers/spaces cover.svg', file: coverSvg('Spaces', '#556633') }
+}
+
+const outputs = [
+  basicLtr,
+  rtlBook,
+  scriptedClips,
+  hostileBook,
+  spacesInName,
+  opdsCatalog,
+  spacesCover,
+]
 
 mkdirSync(outDir, { recursive: true })
-for (const makeBook of books) {
-  const { filename, entries } = makeBook()
-  const path = join(outDir, filename)
-  writeFileSync(path, buildZip(entries))
+for (const makeOutput of outputs) {
+  const output = makeOutput()
+  const path = join(outDir, output.filename)
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, 'entries' in output ? buildZip(output.entries) : output.file)
   console.log(`wrote ${path}`)
 }
