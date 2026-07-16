@@ -11,7 +11,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "allowJs": true,
-    "checkJs": true,
+    // Our own scripts opt in per-file via // @ts-check; global checkJs would
+    // drag the vendored (untyped) engine into strict checking through the
+    // unit tests' import chains.
+    "checkJs": false,
     "noEmit": true,
     "skipLibCheck": true
   },

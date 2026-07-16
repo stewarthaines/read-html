@@ -37,6 +37,16 @@ test('reader: RTL book, first page', async ({ page }) => {
   await expect(page).toHaveScreenshot('reader-rtl.png')
 })
 
+test('catalog: fixture feed loaded', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Catalogs' }).click()
+  await page.getByLabel('Add a catalog by URL').fill('http://127.0.0.1:4174/catalog.xml')
+  await page.getByRole('button', { name: 'Open catalog' }).click()
+  await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
+  await expect(page.locator('img.cover')).toBeVisible()
+  await expect(page).toHaveScreenshot('catalog-feed.png')
+})
+
 test('library: one imported book', async ({ page }) => {
   await openFixture(page)
   await page.getByRole('button', { name: 'Library' }).click()

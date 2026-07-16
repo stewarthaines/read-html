@@ -13,11 +13,20 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'npm run dev -- --port 4173 --strictPort --host 127.0.0.1',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'npm run dev -- --port 4173 --strictPort --host 127.0.0.1',
+      url: 'http://127.0.0.1:4173',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      // Serves fixtures/build with CORS (and a /no-cors/ mirror) for the
+      // catalog and deep-link specs.
+      command: 'node scripts/fixture-server.mjs 4174',
+      url: 'http://127.0.0.1:4174/catalog.xml',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     // WebKit is first-class: the audience reads in Safari-family engines.

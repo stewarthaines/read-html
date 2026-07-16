@@ -1,3 +1,4 @@
+// @ts-check
 // Build verification (§2): boots each built artifact headlessly and asserts
 // the shell renders — the hosted dist/ over HTTP and the single-file
 // READ.html from file:// (its offline-from-disk contract). Build-config

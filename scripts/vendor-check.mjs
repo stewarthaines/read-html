@@ -1,3 +1,4 @@
+// @ts-check
 // Engine-upgrade guard (§7): fails loudly if the two vendored foliate-js
 // integration points READ.html depends on have changed. See
 // vendor/foliate-js/VENDORED.md for the update procedure.
