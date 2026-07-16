@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { openFixture } from './helpers'
 
 // Visual baselines are generated inside the CI-matching Linux image
 // (npm run test:e2e:update) — font rendering differs across platforms, so
@@ -6,9 +7,13 @@ import { expect, test } from '@playwright/test'
 test.skip(process.platform !== 'linux', 'visual baselines are Linux-only')
 
 test('reader: chapter one, first page', async ({ page }) => {
-  await page.goto('/')
-  await page.setInputFiles('input[type=file]', 'fixtures/build/basic-ltr.epub')
-  const section = page.frameLocator('iframe')
-  await expect(section.getByRole('heading', { name: 'Chapter One' })).toBeVisible()
+  await openFixture(page)
   await expect(page).toHaveScreenshot('reader-chapter-one.png')
+})
+
+test('library: one imported book', async ({ page }) => {
+  await openFixture(page)
+  await page.getByRole('button', { name: 'Library' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Basic LTR' })).toBeVisible()
+  await expect(page).toHaveScreenshot('library-one-book.png')
 })

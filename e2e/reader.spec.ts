@@ -1,22 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
-
-const FIXTURE = 'fixtures/build/basic-ltr.epub'
-
-type ViewElement = Element & { lastLocation?: { fraction: number } }
-
-const readingFraction = (page: Page) =>
-  page.evaluate(
-    () => (document.querySelector('foliate-view') as ViewElement | null)?.lastLocation?.fraction,
-  )
-
-async function openFixture(page: Page) {
-  await page.goto('/')
-  await page.setInputFiles('input[type=file]', FIXTURE)
-  const section = page.frameLocator('iframe')
-  await expect(section.getByRole('heading', { name: 'Chapter One' })).toBeVisible()
-  return section
-}
+import { expect, test } from '@playwright/test'
+import { openFixture, readingFraction } from './helpers'
 
 test('opening an EPUB from the file picker renders the first page paginated', async ({ page }) => {
   const section = await openFixture(page)
