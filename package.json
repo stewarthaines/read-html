@@ -8,6 +8,7 @@
     "prepare": "node fixtures/generate.mjs",
     "dev": "vite",
     "build": "vite build",
+    "build:single": "vite build --config vite.config.single.ts",
     "preview": "vite preview",
     "analyze": "vite build --mode analyze",
     "smoke": "node scripts/smoke.mjs",
@@ -44,6 +45,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.64.0",
     "vite": "^8.1.4",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.10"
   }
 }

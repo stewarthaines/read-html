@@ -17,6 +17,7 @@ steps:
     image: mcr.microsoft.com/playwright:v1.61.1-noble
     commands:
       - npm run build
+      - npm run build:single
       - npm run smoke
 
   - name: e2e

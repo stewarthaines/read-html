@@ -17,6 +17,7 @@
   },
   "include": [
     "vite.config.ts",
+    "vite.config.single.ts",
     "playwright.config.ts",
     "eslint.config.js",
     "svelte.config.js",
