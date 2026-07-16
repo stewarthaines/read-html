@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n'
+  import SettingsDialog from '../settings/SettingsDialog.svelte'
   import type { BookRecord } from '../storage/types'
 
   interface Props {
@@ -9,6 +10,8 @@
     onpick: (file: File) => void
   }
   let { books, onopen, ondelete, onpick }: Props = $props()
+
+  let settingsDialog: SettingsDialog
 
   let coverUrls = $state<Map<string, string>>(new Map())
   $effect(() => {
@@ -32,7 +35,15 @@
   }
 </script>
 
+<SettingsDialog bind:this={settingsDialog} />
+
 <main>
+  <button
+    class="settings"
+    onclick={() => settingsDialog.open()}
+    aria-label={t('Settings')}
+    title={t('Settings')}>⚙</button
+  >
   <h1><label for="book-file">{t('Open a book')}</label></h1>
   <input id="book-file" type="file" accept=".epub,application/epub+zip" onchange={handlePick} />
   {#if books.length > 0}
@@ -69,6 +80,14 @@
     justify-content: center;
     gap: 1rem;
     padding: 1rem;
+    position: relative;
+  }
+
+  .settings {
+    position: absolute;
+    inset-block-start: 0.5rem;
+    inset-inline-end: 0.5rem;
+    font: inherit;
   }
 
   h1 {

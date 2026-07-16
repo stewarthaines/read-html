@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { t } from '../i18n'
+  import SettingsDialog from '../settings/SettingsDialog.svelte'
+  import { settings } from '../settings/index.svelte'
+  import { bookContentCss } from '../theme/book'
   import { openBook, type FoliateViewElement, type TocItem } from './foliate'
 
   interface Props {
@@ -13,8 +16,18 @@
 
   let container: HTMLDivElement
   let tocDialog: HTMLDialogElement
+  let settingsDialog: SettingsDialog
   let view = $state<FoliateViewElement>()
   let error = $state('')
+
+  // Reading-comfort settings apply live (§3.5): flow via the renderer's
+  // observed attribute, font size and theme via injected section CSS.
+  $effect(() => {
+    view?.renderer.setAttribute('flow', settings.flow)
+  })
+  $effect(() => {
+    view?.renderer.setStyles?.(bookContentCss(settings))
+  })
 
   const toc = $derived(view?.book.toc ?? [])
   const title = $derived.by(() => {
@@ -28,6 +41,8 @@
       file,
       container,
       lastLocation: initialPosition,
+      flow: settings.flow,
+      styles: bookContentCss(settings),
       onSectionLoad: handleSectionLoad,
       onRelocate: onrelocate,
     })
@@ -53,7 +68,14 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (tocDialog?.open) return
+    if (tocDialog?.open || settingsDialog?.isOpen()) return
+    // Keys aimed at form controls (selects, the file input, buttons) must
+    // act on the control, never page the book.
+    if (
+      event.target instanceof Element &&
+      event.target.closest('input, select, button, textarea, dialog')
+    )
+      return
     switch (event.key) {
       // Arrows are physical; goLeft/goRight map them to logical prev/next
       // from the book's page-progression direction (§3.3).
@@ -108,6 +130,9 @@
       >☰</button
     >
     <h1>{title}</h1>
+    <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
+      >⚙</button
+    >
     <button
       onclick={() => view?.goLeft()}
       aria-label={t('Previous page')}
@@ -124,6 +149,8 @@
     <div class="view" bind:this={container}></div>
   </main>
 </div>
+
+<SettingsDialog bind:this={settingsDialog} />
 
 <dialog bind:this={tocDialog} aria-label={t('Contents')}>
   {#if toc.length > 0}

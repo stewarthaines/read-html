@@ -32,6 +32,9 @@ interface SectionLoadDetail {
 export interface FoliateViewElement extends HTMLElement {
   book: FoliateBook
   lastLocation?: Relocation
+  /** The paginator (or fixed-layout) element; supports the `flow` attribute
+   *  and per-section user-style injection. */
+  renderer: HTMLElement & { setStyles?: (css: string) => void }
   open(book: FoliateBook): Promise<void>
   init(options: { lastLocation?: string; showTextStart?: boolean }): Promise<void>
   goTo(target: string | number): Promise<unknown>
@@ -98,6 +101,10 @@ export interface OpenBookOptions {
   container: HTMLElement
   /** EPUB CFI to restore; omit to start from the beginning. */
   lastLocation?: string | null
+  /** Initial renderer flow ('paginated' | 'scrolled'), applied before first render. */
+  flow?: string
+  /** Initial user-settings CSS injected into sections, applied before first render. */
+  styles?: string
   onSectionLoad: (doc: Document) => void
   onRelocate: (location: Relocation) => void
 }
@@ -115,6 +122,10 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
   })
   options.container.append(view)
   await view.open(book)
+  // Between open (renderer exists) and init (first section renders): settings
+  // applied here take effect from the first paint, with no flash or reflow.
+  if (options.flow) view.renderer.setAttribute('flow', options.flow)
+  if (options.styles) view.renderer.setStyles?.(options.styles)
   await view.init({ lastLocation: options.lastLocation ?? undefined })
   return view
 }
