@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import Catalog from './lib/catalog/Catalog.svelte'
+  import { downloadBook } from './lib/catalog/download'
   import { t } from './lib/i18n/index.svelte'
   import { settings } from './lib/settings/index.svelte'
   import { applyAppTheme } from './lib/theme/app'
@@ -24,10 +26,19 @@
 
   let books = $state<BookRecord[]>([])
   let current = $state<OpenedBook>()
+  let catalog = $state<{ initialUrl: string | null }>()
   let error = $state('')
 
   onMount(() => {
     void refresh()
+    // Deep links (§3.7) are read once at startup, then cleared so reloads
+    // return to the app's own state.
+    const params = new URLSearchParams(location.search)
+    const bookUrl = params.get('book')
+    const catalogUrl = params.get('catalog')
+    if (bookUrl || catalogUrl) history.replaceState(null, '', location.pathname)
+    if (bookUrl) void openFromUrl(bookUrl)
+    else if (catalogUrl) catalog = { initialUrl: catalogUrl }
   })
 
   $effect(() => {
@@ -66,12 +77,31 @@
     }
     await updateBook(record.id, { lastOpened: Date.now() })
     lastCfi = null
+    catalog = undefined
     current = {
       id: record.id,
       file,
       position: record.position,
       scriptingConsent: record.scriptingConsent,
     }
+  }
+
+  async function openFromUrl(url: string): Promise<void> {
+    error = ''
+    try {
+      const record = await downloadBook(await storage, url, false)
+      await handleOpen(record)
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
+    }
+  }
+
+  function handleDrop(event: DragEvent): void {
+    // Drag-drop import (feature 1, M2 amendment): active outside the reader.
+    if (current) return
+    event.preventDefault()
+    const file = event.dataTransfer?.files?.[0]
+    if (file) void handlePick(file)
   }
 
   async function handleDelete(record: BookRecord): Promise<void> {
@@ -119,6 +149,8 @@
   }
 </script>
 
+<svelte:window ondragover={(event) => event.preventDefault()} ondrop={handleDrop} />
+
 {#if current}
   {#key current}
     <Reader
@@ -130,11 +162,27 @@
       onclose={handleClose}
     />
   {/key}
+{:else if catalog}
+  <Catalog
+    {storage}
+    initialUrl={catalog.initialUrl}
+    onopen={handleOpen}
+    onback={async () => {
+      catalog = undefined
+      await refresh()
+    }}
+  />
 {:else}
   {#if error}
     <p role="alert">{error}</p>
   {/if}
-  <Library {books} onpick={handlePick} onopen={handleOpen} ondelete={handleDelete} />
+  <Library
+    {books}
+    onpick={handlePick}
+    onopen={handleOpen}
+    ondelete={handleDelete}
+    oncatalogs={() => (catalog = { initialUrl: null })}
+  />
 {/if}
 
 <style>

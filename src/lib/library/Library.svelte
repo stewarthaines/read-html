@@ -8,8 +8,9 @@
     onopen: (book: BookRecord) => void
     ondelete: (book: BookRecord) => void
     onpick: (file: File) => void
+    oncatalogs: () => void
   }
-  let { books, onopen, ondelete, onpick }: Props = $props()
+  let { books, onopen, ondelete, onpick, oncatalogs }: Props = $props()
 
   let settingsDialog: SettingsDialog
 
@@ -46,6 +47,7 @@
   >
   <h1><label for="book-file">{t('Open a book')}</label></h1>
   <input id="book-file" type="file" accept=".epub,application/epub+zip" onchange={handlePick} />
+  <button class="catalogs" onclick={oncatalogs}>{t('Catalogs')}</button>
   {#if books.length > 0}
     <ul class="books">
       {#each books as book (book.id)}
