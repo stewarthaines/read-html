@@ -1,0 +1,31 @@
+# Codeberg CI (Woodpecker). Runs on every push: validate + build + smoke +
+# Playwright e2e. Firefox is best-effort (non-blocking job); Chromium and
+# WebKit block the pipeline.
+# The image tag must match the @playwright/test version in package.json —
+# scripts/update-snapshots.sh derives it the same way for baseline parity.
+when:
+  - event: [push, pull_request]
+
+steps:
+  - name: validate
+    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    commands:
+      - npm ci
+      - npm run validate
+
+  - name: build-and-smoke
+    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    commands:
+      - npm run build
+      - npm run smoke
+
+  - name: e2e
+    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    commands:
+      - npx playwright test --project=chromium --project=webkit
+
+  - name: e2e-firefox
+    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    failure: ignore
+    commands:
+      - npx playwright test --project=firefox
