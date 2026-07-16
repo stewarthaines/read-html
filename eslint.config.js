@@ -27,7 +27,14 @@ export default ts.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs', '*.config.js', '*.config.ts', 'e2e/**', 'tests/**'],
+    files: [
+      'scripts/**/*.mjs',
+      'fixtures/**/*.mjs',
+      '*.config.js',
+      '*.config.ts',
+      'e2e/**',
+      'tests/**',
+    ],
     languageOptions: {
       globals: { ...globals.node },
     },
