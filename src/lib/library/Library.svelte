@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../i18n'
+  import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import type { BookRecord } from '../storage/types'
 

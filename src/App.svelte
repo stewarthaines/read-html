@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { t } from './lib/i18n'
+  import { t } from './lib/i18n/index.svelte'
   import { settings } from './lib/settings/index.svelte'
   import { applyAppTheme } from './lib/theme/app'
   import Library from './lib/library/Library.svelte'

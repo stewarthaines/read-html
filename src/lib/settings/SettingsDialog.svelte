@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../i18n'
+  import { t } from '../i18n/index.svelte'
   import { FONT_SIZE_MAX, FONT_SIZE_MIN, settings } from './index.svelte'
 
   let dialog: HTMLDialogElement

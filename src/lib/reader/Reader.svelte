@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { t } from '../i18n'
+  import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import { settings } from '../settings/index.svelte'
   import { bookContentCss } from '../theme/book'
@@ -34,6 +34,9 @@
     const raw = view?.book.metadata?.title
     return typeof raw === 'string' ? raw : ''
   })
+  // Toolbar paging is logical (§3.3: "next" advances in reading order); only
+  // the arrow glyphs are physical, following the book's progression direction.
+  const bookIsRtl = $derived(view?.book.dir === 'rtl')
 
   onMount(() => {
     let disposed: FoliateViewElement | undefined
@@ -133,13 +136,11 @@
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
     >
-    <button
-      onclick={() => view?.goLeft()}
-      aria-label={t('Previous page')}
-      title={t('Previous page')}>‹</button
+    <button onclick={() => view?.prev()} aria-label={t('Previous page')} title={t('Previous page')}
+      >{bookIsRtl ? '›' : '‹'}</button
     >
-    <button onclick={() => view?.goRight()} aria-label={t('Next page')} title={t('Next page')}
-      >›</button
+    <button onclick={() => view?.next()} aria-label={t('Next page')} title={t('Next page')}
+      >{bookIsRtl ? '‹' : '›'}</button
     >
   </header>
   <main aria-label={t('Book')}>
