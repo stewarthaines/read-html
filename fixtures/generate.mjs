@@ -363,6 +363,10 @@ function wavTone() {
 const CLIP_STYLE = `span.clip {
   border-bottom: 2px dotted currentColor;
   cursor: pointer;
+  /* Empty url() reproduces a real-book crash: foliate resolves it to the
+     stylesheet itself, the circular-reference guard loads it as a Blob, and
+     the paginator's CSS hook choked on the non-string (vendor patch 4). */
+  background-image: url();
 }
 span.clip.clip-playing {
   outline: 2px solid currentColor;

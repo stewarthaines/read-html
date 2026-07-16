@@ -28,5 +28,6 @@ All patches are marked with `READ.html patch:` comments:
 1. **`view.js`: `makeBook` format branches removed** — the CBZ, FB2/FBZ, PDF, and MOBI detection branches (and their dynamic imports) are deleted; any ZIP file is treated as EPUB. This is what keeps the excluded modules out of the Vite bundle, since Vite resolves dynamic import specifiers at build time.
 2. **`view.js`: `initTTS()` method removed** — it dynamically imported the excluded `tts.js`.
 3. **`view.js`, `paginator.js`, `fixed-layout.js`: shadow roots changed from `closed` to `open`** — Playwright cannot pierce closed shadow DOM, and the e2e suite must reach the section iframe (content assertions from M1; clicking clip spans and inspecting the audio element at M5). Closed mode is not a security boundary; nothing else depends on it.
+4. **`paginator.js`: the CSS `data`-hook passes non-strings through** — a stylesheet can reach `Loader.createURL` as a Blob via the circular-reference path (observed with a real book whose CSS contained an empty `url()`, which resolves to the stylesheet itself); upstream's hook called `.replace` on it, rejecting the whole section load. Worth reporting upstream.
 
 No other vendored file is modified.

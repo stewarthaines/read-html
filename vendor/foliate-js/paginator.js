@@ -650,7 +650,12 @@ export class Paginator extends HTMLElement {
             if (detail.type !== 'text/css') return
             const w = innerWidth
             const h = innerHeight
-            detail.data = Promise.resolve(detail.data).then(data => data
+            // READ.html patch: pass non-strings through — a stylesheet can
+            // arrive as a Blob via the loader's circular-reference path
+            // (e.g. an empty url() resolving to the stylesheet itself), and
+            // calling .replace on it killed the whole section. VENDORED.md #4.
+            detail.data = Promise.resolve(detail.data).then(data =>
+                typeof data !== 'string' ? data : data
                 // unprefix as most of the props are (only) supported unprefixed
                 .replace(/(?<=[{\s;])-epub-/gi, '')
                 // replace vw and vh as they cause problems with layout
