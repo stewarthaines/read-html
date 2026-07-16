@@ -185,7 +185,7 @@ const languageInfo = lang => {
 }
 
 export class View extends HTMLElement {
-    #root = this.attachShadow({ mode: 'closed' })
+    #root = this.attachShadow({ mode: 'open' }) /* READ.html patch: open for e2e (see VENDORED.md) */
     #sectionProgress
     #tocProgress
     #pageProgress

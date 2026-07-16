@@ -31,7 +31,7 @@ const getViewport = (doc, viewport) => {
 
 export class FixedLayout extends HTMLElement {
     static observedAttributes = ['zoom']
-    #root = this.attachShadow({ mode: 'closed' })
+    #root = this.attachShadow({ mode: 'open' }) /* READ.html patch: open for e2e (see VENDORED.md) */
     #observer = new ResizeObserver(() => this.#render())
     #spreads
     #index = -1
