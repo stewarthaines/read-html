@@ -2,6 +2,19 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## M5 — scripts (consent gate, §3.4 end-to-end)
+
+Accepted when all of the following hold (e2e: `e2e/scripts.spec.ts`; unit: `tests/consent.test.ts`, `tests/strip.test.ts`):
+
+- **Threat model (stated per §3.4)**: consented book scripts run with the app origin's authority — the OPFS/IndexedDB library, localStorage, all of it. This is accepted by design for a trusted-publisher reader on a dedicated origin (`read.readitinabook.com`) holding nothing but reading data; it is exactly why READ.html lives on its own subdomain. The consent gate exists so that authority is only ever granted explicitly, per book, by the reader.
+- Detection: a book is scripted when any OPF spine itemref **or** manifest item carries `properties~="scripted"` (§8's publisher contract says spine; the EPUB 3 spec puts it on manifest items; both are honored).
+- Consent decision matrix (unit-tested): non-scripted → strip; scripted + recorded grant → run; scripted + recorded denial → strip; scripted + no record → render stripped and ask.
+- The one-time prompt uses §3.4's wording ("This book has interactive features (audio, and similar). Enable them?"); Enable and Keep-off both persist to the book's metadata record; dismissing without answering re-asks next open. On grant the book re-renders with scripts at the same position.
+- Consented books skip script-stripping AND get the §8 `data-src` rewrite: each `span.clip[data-src]` without a URL scheme is resolved against its section and given a reader-created `blob:` URL for the same bytes, so the book's player passes it through untouched. The rewrite runs in the pre-blob markup transform (same hook as stripping), so it is complete before any book script can read `data-src`. A clip href that resolves to nothing in the book — the first real-book failure, caused by invalid chapter-relative hrefs — warns to the console naming the resolved path, degrades that span gracefully, and never breaks the section (fixture-covered). Non-consented books get no rewrite.
+- Fixtures (§6): `scripted-clips.epub` implements the §8 contract exactly (clip spans, one static audio element with a generated WAV tone, visible clip styling, `properties="scripted"` on spine itemref and manifest item, the contract player script); `scripted-hostile.epub` attempts a `localStorage` write on load, inline and via an `on*` attribute.
+- e2e: (1) default: clip spans render styled, tapping does nothing, the audio element never plays — graceful degradation is asserted, per the publisher contract; (2) after consent: tapping a clip seeks and plays the shared audio element, toggles `clip-playing`, and stops at `data-end` (asserted via the media element's `paused`/`currentTime`); (3) the hostile book's write never lands without consent; (4) consent persists across close/reopen; (5) revocation from the settings trusted-books list returns the book to stripped.
+- Settings lists trusted (consented) books and can revoke each. The "trust books from this catalog" auto-consent option is deferred to M6 with catalogs themselves.
+
 ## M4 — direction
 
 Accepted when all of the following hold (e2e: `e2e/rtl.spec.ts`; unit: `tests/i18n.test.ts`):
