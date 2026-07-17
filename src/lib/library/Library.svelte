@@ -7,10 +7,11 @@
     books: BookRecord[]
     onopen: (book: BookRecord) => void
     ondelete: (book: BookRecord) => void
+    ondownload: (book: BookRecord) => void
     onpick: (file: File) => void
     oncatalogs: () => void
   }
-  let { books, onopen, ondelete, onpick, oncatalogs }: Props = $props()
+  let { books, onopen, ondelete, ondownload, onpick, oncatalogs }: Props = $props()
 
   let settingsDialog: SettingsDialog
 
@@ -62,6 +63,12 @@
             <span class="author">{book.author}</span>
             <span class="progress">{Math.round(book.fraction * 100)}%</span>
           </button>
+          <button
+            class="download"
+            onclick={() => ondownload(book)}
+            aria-label="{t('Download')} {book.title}"
+            title={t('Download')}>⤓</button
+          >
           <button
             class="delete"
             onclick={() => ondelete(book)}
@@ -156,6 +163,13 @@
     position: absolute;
     inset-block-start: 0.25rem;
     inset-inline-end: 0.25rem;
+    font: inherit;
+  }
+
+  .download {
+    position: absolute;
+    inset-block-start: 0.25rem;
+    inset-inline-start: 0.25rem;
     font: inherit;
   }
 </style>

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import Catalog from './lib/catalog/Catalog.svelte'
   import { downloadBook } from './lib/catalog/download'
+  import { downloadFileName, saveBlob } from './lib/library/download'
   import { t } from './lib/i18n/index.svelte'
   import { settings } from './lib/settings/index.svelte'
   import { applyAppTheme } from './lib/theme/app'
@@ -147,6 +148,18 @@
     await refresh()
   }
 
+  // Save the book's original bytes to disk under its original filename (or a
+  // title-derived name where none was captured).
+  async function handleDownload(record: BookRecord): Promise<void> {
+    error = ''
+    const blob = await (await storage).get(record.id)
+    if (!blob) {
+      error = t('This book is missing from storage.')
+      return
+    }
+    saveBlob(blob, downloadFileName(record))
+  }
+
   // Reading position persists debounced (§3.3) and flushes on close so the
   // last relocate is never lost.
   let lastCfi: string | null = null
@@ -231,6 +244,7 @@
     onpick={handlePick}
     onopen={handleOpen}
     ondelete={handleDelete}
+    ondownload={handleDownload}
     oncatalogs={() => (catalog = { initialUrl: null })}
   />
 {/if}

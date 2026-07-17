@@ -15,6 +15,9 @@ export interface BookRecord {
   id: string
   title: string
   author: string
+  /** Original filename at import (picker/drop) or the acquisition URL basename;
+   *  absent for embedded-payload books and records from before 0.1. */
+  fileName?: string
   coverThumb: Blob | null
   /** Reading position as an EPUB CFI string; null before first relocate. */
   position: string | null

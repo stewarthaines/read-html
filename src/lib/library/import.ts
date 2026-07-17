@@ -11,14 +11,20 @@ export async function importBook(storage: BookStorage, file: File): Promise<Book
   const now = Date.now()
   const existing = await getBook(id)
   if (existing) {
-    await updateBook(id, { lastOpened: now })
-    return { ...existing, lastOpened: now }
+    // Backfill the filename onto records imported before it was captured.
+    const patch =
+      existing.fileName || !file.name
+        ? { lastOpened: now }
+        : { lastOpened: now, fileName: file.name }
+    await updateBook(id, patch)
+    return { ...existing, ...patch }
   }
   const info = await readBookInfo(file)
   const record: BookRecord = {
     id,
     title: info.title || file.name,
     author: info.author,
+    fileName: file.name || undefined,
     coverThumb: info.cover ? await makeCoverThumb(info.cover) : null,
     position: null,
     fraction: 0,
