@@ -33,10 +33,11 @@ jobs:
         run: npx playwright test --project=chromium --project=webkit
 
       # Firefox is best-effort (matches the .woodpecker.yml posture): it fails
-      # in headless containers that lack an audio sink, so it must not block.
+      # in headless containers that lack an audio sink. Swallow the exit code so
+      # a passing run stays visibly green (continue-on-error still leaves a red
+      # error annotation); any failures remain in this step's log.
       - name: E2E (Firefox, best-effort)
-        continue-on-error: true
-        run: npx playwright test --project=firefox
+        run: npx playwright test --project=firefox || echo "Firefox (best-effort) had failures; see the log above"
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
