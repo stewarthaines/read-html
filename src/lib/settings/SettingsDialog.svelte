@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { REPO_URL } from '../about'
   import { t } from '../i18n/index.svelte'
   import { listBooks, updateBook } from '../storage/metadata'
   import type { BookRecord } from '../storage/types'
@@ -70,6 +71,12 @@
       </section>
     {/if}
     <button>{t('Close')}</button>
+    <!-- §3.8 about panel: the name, one plain sentence, the license, the
+         source link. Nothing else. -->
+    <footer class="about">
+      <p>READ.html — {t('A reader for EPUB books that works in your browser.')}</p>
+      <p><a href={REPO_URL}>{t('Source code')}</a> · {t('MIT license')}</p>
+    </footer>
   </form>
 </dialog>
 
@@ -117,5 +124,16 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding-block: 0.25rem;
+  }
+
+  .about {
+    border-block-start: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+    padding-block-start: 0.5rem;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, CanvasText 70%, Canvas);
+  }
+
+  .about p {
+    margin: 0.25rem 0;
   }
 </style>
