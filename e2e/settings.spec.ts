@@ -134,3 +134,12 @@ test('settings dialog has no accessibility violations', async ({ page }) => {
   const scan = await new AxeBuilder({ page }).analyze()
   expect(scan.violations).toEqual([])
 })
+
+test('the settings dialog closes on a backdrop click', async ({ page }) => {
+  await openFixture(page)
+  const dialog = await openSettings(page)
+  await expect(dialog).toBeVisible()
+  // Click well outside the centered dialog box.
+  await page.mouse.click(5, 5)
+  await expect(dialog).not.toBeVisible()
+})

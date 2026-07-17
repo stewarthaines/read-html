@@ -735,6 +735,60 @@ function noMetadata() {
   }
 }
 
+// Long TOC labels (and one unbreakable slug) to prove the drawer wraps them
+// instead of stretching to the longest entry.
+/** @returns {Book} */
+function longToc() {
+  const title = 'Long Titles'
+  // Enough entries, several wrapping to two lines, to overflow the drawer
+  // vertically — so the last one being reachable (not clipped) is testable.
+  const titles = [
+    'Ethnomusicological Life in Georgia (July to December 2025)',
+    'Nanina UK Tour',
+    'Forty-Three Years of Inspiration from Georgian Singing',
+    'The Return of Meskhetian Archival Materials to Performing Practice',
+    'Innovative Collection of Songs from the Repertoire of Ensemble Nanina',
+    'Georgian Folk Song in the United Kingdom',
+    'Folk Ensemble Mzeshina from Telavi in Kakheti',
+    'Voices of the Ancestors: An Archive of Women Georgian Song',
+    'Chanting, Ghighini, Krimanchuli, Singing',
+    'The Tradition of Batonebi in Meskheti',
+    'batonebis_mamidasa_score_supplementary_materials_appendix',
+    'Imprint',
+  ]
+  const chapters = titles.map((title, i) => ({ file: `chapter${i + 1}.xhtml`, title }))
+  return {
+    filename: 'long-toc.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000008',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters,
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(
+          title,
+          chapters.map((chapter) => ({ label: chapter.title, href: chapter.file })),
+        ),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('Long', '#445566') },
+      ...chapters.map((chapter) => ({
+        name: `OEBPS/${chapter.file}`,
+        data: chapterXhtml(chapter.title, 8),
+      })),
+    ],
+  }
+}
+
 const outputs = [
   basicLtr,
   rtlBook,
@@ -745,6 +799,7 @@ const outputs = [
   spacesCover,
   fixedLayout,
   noMetadata,
+  longToc,
 ]
 
 mkdirSync(outDir, { recursive: true })

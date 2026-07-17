@@ -5,6 +5,7 @@
   import { settings } from '../settings/index.svelte'
   import { bookContentCss } from '../theme/book'
   import { decideScripting } from '../scripting/consent'
+  import { backdropClose } from '../ui/backdrop.svelte'
   import { bookIsScripted, openBook, type FoliateViewElement, type TocItem } from './foliate'
 
   interface Props {
@@ -178,7 +179,12 @@
 
 <!-- §3.4 one-time consent prompt. Enable and Keep-off both persist via
      onconsent; dismissing (Esc) records nothing and re-asks next open. -->
-<dialog bind:this={consentDialog} class="consent" aria-label={t('Interactive features')}>
+<dialog
+  bind:this={consentDialog}
+  class="consent"
+  aria-label={t('Interactive features')}
+  use:backdropClose
+>
   <p>{t('This book has interactive features (audio, and similar). Enable them?')}</p>
   <div class="consent-actions">
     <button onclick={() => handleConsentAnswer(true)}>{t('Enable them')}</button>
@@ -186,7 +192,10 @@
   </div>
 </dialog>
 
-<dialog bind:this={tocDialog} class="toc" aria-label={t('Contents')}>
+<dialog bind:this={tocDialog} class="toc" aria-label={t('Contents')} use:backdropClose>
+  <header class="toc-head">
+    <button onclick={() => tocDialog.close()} aria-label={t('Close')} title={t('Close')}>✕</button>
+  </header>
   {#if toc.length > 0}
     <nav>
       {@render tocEntries(toc)}
@@ -262,12 +271,23 @@
 
   dialog.toc {
     margin: 0;
-    max-block-size: 100svh;
-    block-size: 100svh;
+    inset-block-start: 0;
     inset-inline-start: 0;
+    /* border-box so the 100svh height includes the padding — with the default
+       content-box, padding pushed the drawer past the viewport and the tail
+       of a long TOC scrolled off-screen and clipped. */
+    box-sizing: border-box;
+    block-size: 100svh;
+    /* Override the UA modal cap (max-height: calc(100% - 6px - 2em)), which
+       otherwise leaves a backdrop gap below the drawer. */
+    max-block-size: 100svh;
     border: none;
     border-inline-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
-    min-inline-size: 16rem;
+    /* Fixed-width drawer (capped on narrow screens) so long titles wrap
+       instead of stretching it to the longest entry. */
+    inline-size: 22rem;
+    max-inline-size: 85vw;
+    overflow-y: auto;
   }
 
   dialog.toc ul {
@@ -280,7 +300,31 @@
     padding-inline-start: 0;
   }
 
-  dialog.toc button {
+  /* Sticky close header so it stays reachable while the list scrolls. */
+  .toc-head {
+    display: flex;
+    justify-content: end;
+    position: sticky;
+    inset-block-start: 0;
+    background: Canvas;
+    padding-block-end: 0.25rem;
+  }
+
+  .toc-head button {
+    font: inherit;
+    min-inline-size: 2rem;
+  }
+
+  dialog.toc nav button,
+  dialog.toc li > span {
+    display: block;
+    inline-size: 100%;
+    text-align: start;
+    /* Break even long unbroken tokens (slugs, filenames) rather than overflow. */
+    overflow-wrap: anywhere;
+  }
+
+  dialog.toc nav button {
     background: none;
     border: none;
     color: LinkText;
@@ -288,6 +332,5 @@
     cursor: pointer;
     padding: 0.25rem 0;
     font: inherit;
-    text-align: start;
   }
 </style>

@@ -89,7 +89,10 @@
     position: absolute;
     inset-block-start: 0.5rem;
     inset-inline-end: 0.5rem;
-    font: inherit;
+    /* Match the reader toolbar's settings button sizing (font-size 1rem,
+       min-inline-size 2rem) so the gear is consistent across views. */
+    font-size: 1rem;
+    min-inline-size: 2rem;
   }
 
   h1 {

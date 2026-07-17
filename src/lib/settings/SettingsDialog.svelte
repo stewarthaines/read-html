@@ -3,6 +3,7 @@
   import { t } from '../i18n/index.svelte'
   import { listBooks, updateBook } from '../storage/metadata'
   import type { BookRecord } from '../storage/types'
+  import { backdropClose } from '../ui/backdrop.svelte'
   import { FONT_SIZE_MAX, FONT_SIZE_MIN, settings } from './index.svelte'
 
   let dialog: HTMLDialogElement
@@ -28,7 +29,7 @@
   }
 </script>
 
-<dialog bind:this={dialog} aria-label={t('Settings')}>
+<dialog bind:this={dialog} aria-label={t('Settings')} use:backdropClose>
   <form method="dialog">
     <label>
       {t('Reading mode')}

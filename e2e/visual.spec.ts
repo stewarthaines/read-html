@@ -37,6 +37,17 @@ test('reader: RTL book, first page', async ({ page }) => {
   await expect(page).toHaveScreenshot('reader-rtl.png')
 })
 
+test('reader: TOC drawer with long, wrapping titles', async ({ page }) => {
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/long-toc.epub')
+  await expect(
+    page.frameLocator('iframe[title="Book content"]').getByRole('heading', { level: 1 }).first(),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Contents' }).click()
+  await expect(page.getByRole('dialog', { name: 'Contents' })).toBeVisible()
+  await expect(page).toHaveScreenshot('toc-long-titles.png')
+})
+
 test('catalog: fixture feed loaded', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Catalogs' }).click()
