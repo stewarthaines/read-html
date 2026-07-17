@@ -43,7 +43,7 @@ npm run test:e2e:update  # regenerates visual baselines in the CI Docker image
 
 The rendering engine is [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT), vendored at a pinned commit in `vendor/foliate-js/` — see `VENDORED.md` there for the pin, local patches, and update procedure. The founding spec is `docs/BOOTSTRAP.md`; living acceptance criteria are in `docs/SPEC.md`.
 
-CI (`.woodpecker.yml`) builds and validates only; it does not deploy. READ.html ships as part of the SEED.html deployment at `readitinabook.com/read/`, so that tool's pipeline is responsible for publishing the built artifact.
+CI builds and validates only; it does not deploy (READ.html ships as part of the SEED.html deployment at `readitinabook.com/read/`, so that tool's pipeline publishes the built artifact). Two equivalent pipeline configs are provided: `.github/workflows/ci.yaml` (GitHub Actions, runs on the public mirror with hosted runners) and `.woodpecker.yml` (Codeberg's Woodpecker CI, which requires a one-time repo activation at ci.codeberg.org). Both run the same steps inside the pinned Playwright image so visual snapshots match the committed baselines.
 
 ## Non-goals
 

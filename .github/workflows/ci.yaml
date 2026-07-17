@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    # Runs inside the same Playwright image the visual baselines were generated
+    # in (see scripts/update-snapshots.sh) so snapshot rendering matches. Keep
+    # this tag in sync with @playwright/test in package.json and .woodpecker.yml.
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    steps:
+      - uses: actions/checkout@v4
+
+      # npm ci also runs the `prepare` hook, generating fixtures/build/.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate
+        run: npm run validate
+
+      - name: Build and smoke
+        run: |
+          npm run build
+          npm run build:single
+          npm run size-check
+          npm run payload-check
+          npm run smoke
+
+      - name: E2E (Chromium + WebKit)
+        run: npx playwright test --project=chromium --project=webkit
+
+      # Firefox is best-effort (matches the .woodpecker.yml posture): it fails
+      # in headless containers that lack an audio sink, so it must not block.
+      - name: E2E (Firefox, best-effort)
+        continue-on-error: true
+        run: npx playwright test --project=firefox
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
