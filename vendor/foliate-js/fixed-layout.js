@@ -88,6 +88,12 @@ export class FixedLayout extends HTMLElement {
         iframe.setAttribute('part', 'filter')
         this.#root.append(element)
         if (!src) return { blank: true, element, iframe }
+        // READ.html patch: srcdoc instead of navigating to the blob: URL, so
+        // fixed-layout books open from disk in Chrome too. See paginator.js
+        // and VENDORED.md #6.
+        const srcdoc = src.startsWith('blob:')
+            ? await fetch(src).then(r => r.text()).catch(() => null)
+            : null
         return new Promise(resolve => {
             iframe.addEventListener('load', () => {
                 const doc = iframe.contentDocument
@@ -100,7 +106,8 @@ export class FixedLayout extends HTMLElement {
                     onZoom,
                 })
             }, { once: true })
-            iframe.src = src
+            if (srcdoc != null) iframe.srcdoc = srcdoc
+            else iframe.src = src
         })
     }
     #render(side = this.#side) {

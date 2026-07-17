@@ -252,6 +252,16 @@ class View {
     }
     async load(src, afterLoad, beforeRender) {
         if (typeof src !== 'string') throw new Error(`${src} is not string`)
+        // READ.html patch: deliver the section via srcdoc instead of pointing
+        // the iframe at the blob: URL. Chrome refuses to navigate an iframe to
+        // a blob:null resource under a file: (opaque) origin — the single-file
+        // build opened from disk — while srcdoc, and the blob: subresources it
+        // references, load fine in every engine. The fetched text is exactly
+        // the bytes the blob holds. Falls back to src if fetch fails.
+        // VENDORED.md #6.
+        const srcdoc = src.startsWith('blob:')
+            ? await fetch(src).then(r => r.text()).catch(() => null)
+            : null
         return new Promise(resolve => {
             this.#iframe.addEventListener('load', () => {
                 const doc = this.document
@@ -279,7 +289,8 @@ class View {
 
                 resolve()
             }, { once: true })
-            this.#iframe.src = src
+            if (srcdoc != null) this.#iframe.srcdoc = srcdoc
+            else this.#iframe.src = src
         })
     }
     render(layout) {
