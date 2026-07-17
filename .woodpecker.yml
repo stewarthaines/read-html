@@ -18,6 +18,7 @@ steps:
     commands:
       - npm run build
       - npm run build:single
+      - npm run size-check
       - npm run smoke
 
   - name: e2e
@@ -30,3 +31,21 @@ steps:
     failure: ignore
     commands:
       - npx playwright test --project=firefox
+
+  # Deploys the hosted app to the Cloudflare Pages project `read-html`
+  # (§1); READ.html rides along as a downloadable artifact at /READ.html.
+  # Requires the woodpecker secrets cloudflare_api_token and
+  # cloudflare_account_id (§11 owner action).
+  - name: deploy
+    image: node:22
+    environment:
+      CLOUDFLARE_API_TOKEN:
+        from_secret: cloudflare_api_token
+      CLOUDFLARE_ACCOUNT_ID:
+        from_secret: cloudflare_account_id
+    commands:
+      - cp dist-single/READ.html dist/READ.html
+      - npx wrangler@4 pages deploy dist --project-name read-html --branch main
+    when:
+      - event: push
+        branch: main
