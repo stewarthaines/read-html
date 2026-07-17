@@ -1,6 +1,8 @@
 import { OPFS_BOOKS_DIR, OPFS_PROBE_FILE } from './keys'
 import { IdbBookStorage } from './bytes-idb'
+import { MemoryBookStorage } from './bytes-memory'
 import { OpfsBookStorage } from './bytes-opfs'
+import { openDatabase } from './idb'
 import type { BookStorage, OpfsDirectory } from './types'
 
 // Real OPFS roots expose getDirectoryHandle; the injected test mock does not,
@@ -33,5 +35,15 @@ export async function createBookStorage(): Promise<BookStorage> {
   } catch {
     // Any OPFS failure means the IndexedDB backend takes over.
   }
-  return new IdbBookStorage()
+  // Feature 11: probe IndexedDB by really opening the database — some
+  // environments (file:// in some engines, private modes) expose the API but
+  // refuse to open. Last resort is the in-memory backend; the app notices
+  // its kind and warns that nothing will persist.
+  try {
+    const db = await openDatabase()
+    db.close()
+    return new IdbBookStorage()
+  } catch {
+    return new MemoryBookStorage()
+  }
 }

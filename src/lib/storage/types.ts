@@ -3,7 +3,7 @@
 // engine's zip reader random-access reads, so large books open without
 // loading fully into memory. IndexedDB is the fallback.
 export interface BookStorage {
-  readonly kind: 'opfs' | 'idb'
+  readonly kind: 'opfs' | 'idb' | 'memory'
   put(id: string, file: Blob): Promise<void>
   get(id: string): Promise<Blob | null>
   delete(id: string): Promise<void>

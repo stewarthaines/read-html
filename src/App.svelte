@@ -28,8 +28,13 @@
   let current = $state<OpenedBook>()
   let catalog = $state<{ initialUrl: string | null }>()
   let error = $state('')
+  // Feature 11: memory-only storage still reads books but keeps nothing.
+  let volatileStorage = $state(false)
 
   onMount(() => {
+    void storage.then((backend) => {
+      volatileStorage = backend.kind === 'memory'
+    })
     void refresh()
     // Deep links (§3.7) are read once at startup, then cleared so reloads
     // return to the app's own state.
@@ -173,6 +178,13 @@
     }}
   />
 {:else}
+  {#if volatileStorage}
+    <p role="status" class="notice">
+      {t(
+        'This browser will not keep books here: your library and reading positions last only until this page closes.',
+      )}
+    </p>
+  {/if}
   {#if error}
     <p role="alert">{error}</p>
   {/if}
@@ -186,7 +198,8 @@
 {/if}
 
 <style>
-  p[role='alert'] {
+  p[role='alert'],
+  p.notice {
     margin: 0;
     padding: 0.5rem 1rem;
     border-block-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);

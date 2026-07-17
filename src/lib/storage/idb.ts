@@ -3,7 +3,7 @@ import { BOOKS_STORE, BYTES_STORE, DB_NAME, DB_VERSION } from './keys'
 // Opens a fresh connection every call, never caching in module state: the unit
 // tests swap the global `indexedDB` (fake-indexeddb) between tests, so a cached
 // connection would point at a dead factory.
-function openDatabase(): Promise<IDBDatabase> {
+export function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = () => {

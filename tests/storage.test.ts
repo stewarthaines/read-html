@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, expect, test } from 'vitest'
 import { IdbBookStorage } from '../src/lib/storage/bytes-idb'
+import { MemoryBookStorage } from '../src/lib/storage/bytes-memory'
 import { OpfsBookStorage } from '../src/lib/storage/bytes-opfs'
 import { createBookStorage } from '../src/lib/storage/index'
 import { sha256Hex } from '../src/lib/storage/hash'
@@ -59,6 +60,7 @@ beforeEach(() => {
 for (const [label, make] of [
   ['OPFS backend', () => new OpfsBookStorage(makeOpfsRoot())],
   ['IDB backend', () => new IdbBookStorage()],
+  ['memory backend', () => new MemoryBookStorage()],
 ] as const) {
   test(`${label}: put/get round-trips the exact bytes`, async () => {
     const storage = make()
@@ -100,6 +102,16 @@ test('createBookStorage falls back to IDB when createWritable is unsupported', a
 
 test('createBookStorage falls back to IDB when OPFS is absent entirely', async () => {
   expect((await createBookStorage()).kind).toBe('idb')
+})
+
+test('createBookStorage falls back to memory when IndexedDB refuses to open', async () => {
+  // Feature 11: some environments expose the API but reject open calls.
+  globalThis.indexedDB = {
+    open() {
+      throw new DOMException('blocked', 'SecurityError')
+    },
+  } as unknown as IDBFactory
+  expect((await createBookStorage()).kind).toBe('memory')
 })
 
 test('sha256Hex hashes blob bytes to lowercase hex', async () => {
