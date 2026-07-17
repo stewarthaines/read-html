@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { chromium } from '@playwright/test'
+import { chromium, firefox } from '@playwright/test'
 
 const distDir = fileURLToPath(new URL('../dist', import.meta.url))
 const singleFile = fileURLToPath(new URL('../dist-single/READ.html', import.meta.url))
@@ -70,11 +70,34 @@ const server = createServer((req, res) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)))
 const address = /** @type {import('node:net').AddressInfo} */ (server.address())
 
-const browser = await chromium.launch()
+// Books open from disk in Firefox (Chromium blocks blob: resources in
+// file:-origin iframes — see VENDORED.md), so the single-file target's
+// offline-from-disk claim is smoked in Firefox. Served over http, every
+// engine works and the e2e suite covers it.
+/** @param {import('@playwright/test').Browser} browser */
+async function checkBookOpensFromDisk(browser) {
+  const fixture = fileURLToPath(new URL('../fixtures/build/basic-ltr.epub', import.meta.url))
+  if (!existsSync(fixture))
+    throw new Error('smoke: fixtures missing — run `node fixtures/generate.mjs` first')
+  const page = await browser.newPage()
+  await page.goto(pathToFileURL(singleFile).href, { waitUntil: 'load' })
+  await page.setInputFiles('input[type=file]', fixture)
+  await page
+    .frameLocator('iframe[title="Book content"]')
+    .getByRole('heading', { name: 'Chapter One' })
+    .waitFor({ state: 'visible', timeout: 15000 })
+  await page.close()
+  console.log('smoke OK: READ.html (file://, Firefox) opens a book')
+}
+
+const chromiumBrowser = await chromium.launch()
+const firefoxBrowser = await firefox.launch()
 try {
-  await checkShell(browser, `http://127.0.0.1:${address.port}`, 'dist/')
-  await checkShell(browser, pathToFileURL(singleFile).href, 'READ.html (file://)')
+  await checkShell(chromiumBrowser, `http://127.0.0.1:${address.port}`, 'dist/')
+  await checkShell(chromiumBrowser, pathToFileURL(singleFile).href, 'READ.html shell (file://)')
+  await checkBookOpensFromDisk(firefoxBrowser)
 } finally {
-  await browser.close()
+  await chromiumBrowser.close()
+  await firefoxBrowser.close()
   server.close()
 }

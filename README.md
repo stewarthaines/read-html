@@ -5,7 +5,7 @@
 ## Reading
 
 - **Hosted**: open [read.readitinabook.com](https://read.readitinabook.com), then open a book with the file picker or drag one onto the page. Your library, positions, and settings stay in your browser — there are no accounts and no server storage.
-- **Single file**: download [`READ.html`](https://read.readitinabook.com/READ.html) and open it from disk. Everything works offline except fetching books and catalogs by URL.
+- **Single file**: download [`READ.html`](https://read.readitinabook.com/READ.html) and open it from disk. Everything works offline except fetching books and catalogs by URL. **Opened from disk (`file://`), it renders books in Firefox and Safari but not Chrome/Chromium** — Chromium blocks the `blob:` resources the engine uses inside a `file:`-origin page. Served over http(s) it works in every browser, so host the file if you need Chrome-from-a-link.
 - **Link to a book**: `https://read.readitinabook.com/?book=<url-of-epub>` opens an EPUB directly.
 - **Link to a catalog**: `https://read.readitinabook.com/?catalog=<url-of-opds-feed>` opens the catalog browser.
 
