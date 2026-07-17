@@ -43,7 +43,7 @@ npm run test:e2e:update  # regenerates visual baselines in the CI Docker image
 
 The rendering engine is [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT), vendored at a pinned commit in `vendor/foliate-js/` — see `VENDORED.md` there for the pin, local patches, and update procedure. The founding spec is `docs/BOOTSTRAP.md`; living acceptance criteria are in `docs/SPEC.md`.
 
-CI builds and validates only; it does not deploy (READ.html ships as part of the SEED.html deployment at `readitinabook.com/read/`, so that tool's pipeline publishes the built artifact). Two equivalent pipeline configs are provided: `.github/workflows/ci.yaml` (GitHub Actions, runs on the public mirror with hosted runners) and `.woodpecker.yml` (Codeberg's Woodpecker CI, which requires a one-time repo activation at ci.codeberg.org). Both run the same steps inside the pinned Playwright image so visual snapshots match the committed baselines.
+CI builds and validates only; it does not deploy (READ.html ships as part of the SEED.html deployment at `readitinabook.com/read/`, so that tool's pipeline publishes the built artifact). Two equivalent pipeline configs are provided: `.github/workflows/ci.yaml` (GitHub Actions, runs on the [public mirror](https://github.com/stewarthaines/read-html) with hosted runners) and `.woodpecker.yml` (Codeberg's Woodpecker CI, which requires a one-time repo activation at ci.codeberg.org). Both run the same steps inside the pinned Playwright image so visual snapshots match the committed baselines.
 
 ## Non-goals
 
@@ -51,6 +51,10 @@ CI builds and validates only; it does not deploy (READ.html ships as part of the
 - No highlights, bookmarks, dictionaries, TTS, or in-book search in v1 — foliate-js offers modules for all of these; deliberately unused.
 - No formats beyond EPUB (foliate-js's mobi/fb2/cbz parsers are excluded from the bundle).
 - Not an editor. It opens finished books.
+
+## Source
+
+The public source mirror is [github.com/stewarthaines/read-html](https://github.com/stewarthaines/read-html), where CI runs. Development happens on the private Codeberg repository.
 
 ## License
 
