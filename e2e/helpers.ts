@@ -1,6 +1,6 @@
 import { expect, type FrameLocator, type Page } from '@playwright/test'
 
-const BASIC_LTR = 'fixtures/build/basic-ltr.epub'
+export const BASIC_LTR = 'fixtures/build/basic-ltr.epub'
 
 type ViewElement = Element & { lastLocation?: { fraction: number } }
 

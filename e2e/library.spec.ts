@@ -30,7 +30,9 @@ test('reading position persists across close, reopen, and reload', async ({ page
   await expect(item).toBeVisible()
   await item.click()
   await expect(page.frameLocator('iframe').getByText('Paragraph 1 of Chapter One')).toBeAttached()
-  await expect.poll(() => readingFraction(page)).toBeCloseTo(advanced, 5)
+  // Two decimals is still page-exact (pages are ~0.16 apart in this fixture)
+  // but tolerant of a settling relocate between reading and closing.
+  await expect.poll(() => readingFraction(page)).toBeCloseTo(advanced, 2)
 })
 
 test('re-importing the same file does not create a duplicate', async ({ page }) => {
