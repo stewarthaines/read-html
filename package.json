@@ -1,7 +1,7 @@
 {
   "name": "read-html",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "analyze": "vite build --mode analyze",
     "smoke": "node scripts/smoke.mjs",
     "size-check": "node scripts/size-check.mjs",
+    "payload-check": "node scripts/payload-check.mjs",
     "validate": "npm run typecheck && npm run lint && npm run format:check && npm run knip && npm run test:unit && npm run vendor-check",
     "typecheck": "svelte-check --fail-on-warnings && tsc -p tsconfig.node.json",
     "lint": "eslint . --max-warnings 0",
