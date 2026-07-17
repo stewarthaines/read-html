@@ -4,6 +4,10 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ## [Unreleased]
 
+### Added
+
+- Download a book from your library, saved under its original filename and identical to the file you imported.
+
 ## [0.1.0] — 2026-07-17
 
 First tracked release — a focused, in-browser EPUB reader.

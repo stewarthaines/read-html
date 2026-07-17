@@ -2,6 +2,15 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## Download a book (post-0.1)
+
+Accepted when (e2e: `e2e/download.spec.ts`; unit: `tests/download.test.ts`):
+
+- Each library card has a download control that saves the book's stored bytes to disk — **byte-identical to what was imported** (bytes are content-hashed and never transformed).
+- The saved filename is the original: `File.name` for picker/drag-drop imports, the decoded acquisition-URL basename for catalog/`?book=` downloads. Both flow through `importBook`, which now persists `fileName` on the record (and backfills it onto pre-0.1 records on re-import).
+- Where no filename was captured (embedded-payload books, pre-0.1 records), the name falls back to a sanitized title with an `.epub` extension.
+- Accessibility: the control has an accessible name (`Download <title>`); the library axe check still passes.
+
 ## Embedded-payload slot (post-M7)
 
 The published contract lives in `docs/PAYLOAD_SLOT.md`. Accepted when (build: `npm run payload-check`; e2e: `e2e/payload.spec.ts`; unit: `tests/payload.test.ts`):
