@@ -2,6 +2,7 @@ import { renameSync } from 'node:fs'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
+import { readhtmlVersion } from './vite.config'
 
 // Second build target (§1): one self-contained READ.html that works offline
 // from disk. viteSingleFile inlines all assets and collapses the vendored
@@ -9,6 +10,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 export default defineConfig({
   plugins: [
     svelte(),
+    readhtmlVersion(),
     viteSingleFile(),
     {
       name: 'read-html-output-name',

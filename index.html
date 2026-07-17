@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="readhtml-version" content="__READHTML_VERSION__" />
     <title>READ.html</title>
   </head>
   <body>
     <div id="app"></div>
+    <!-- Embedded-payload slot (docs/PAYLOAD_SLOT.md): publishing tools may
+         insert one base64-encoded EPUB as this element's text content. -->
+    <script type="application/epub+zip;base64" id="readhtml-payload"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

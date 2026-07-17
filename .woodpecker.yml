@@ -19,6 +19,7 @@ steps:
       - npm run build
       - npm run build:single
       - npm run size-check
+      - npm run payload-check
       - npm run smoke
 
   - name: e2e
