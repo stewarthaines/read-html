@@ -8,8 +8,11 @@
   import Library from './lib/library/Library.svelte'
   import { importBook } from './lib/library/import'
   import Reader from './lib/reader/Reader.svelte'
+  import { readEmbeddedPayload } from './lib/payload'
   import { createBookStorage } from './lib/storage/index'
+  import { sha256Hex } from './lib/storage/hash'
   import { deleteBook, getBook, listBooks, updateBook } from './lib/storage/metadata'
+  import { readPayloadPosition, writePayloadPosition } from './lib/storage/payload-position'
   import type { BookRecord } from './lib/storage/types'
   import { debounce } from './lib/util/debounce'
 
@@ -20,6 +23,8 @@
     file: Blob
     position: string | null
     scriptingConsent: boolean | undefined
+    /** Embedded-payload book: session trust, dedicated position key. */
+    embedded?: boolean
   }
 
   const storage = createBookStorage()
@@ -36,6 +41,8 @@
       volatileStorage = backend.kind === 'memory'
     })
     void refresh()
+    // A non-empty payload slot wins over deep links (docs/PAYLOAD_SLOT.md).
+    if (openEmbedded()) return
     // Deep links (§3.7) are read once at startup, then cleared so reloads
     // return to the app's own state.
     const params = new URLSearchParams(location.search)
@@ -45,6 +52,30 @@
     if (bookUrl) void openFromUrl(bookUrl)
     else if (catalogUrl) catalog = { initialUrl: catalogUrl }
   })
+
+  // Embedded book: trusted by construction for this session only — consent
+  // is never recorded; position lives under the dedicated payload key.
+  function openEmbedded(): boolean {
+    let file: File | null
+    try {
+      file = readEmbeddedPayload()
+    } catch (cause) {
+      error = t('This book could not be opened.') + ' ' + String(cause)
+      return true
+    }
+    if (!file) return false
+    void sha256Hex(file).then((id) => {
+      lastCfi = null
+      current = {
+        id,
+        file,
+        position: readPayloadPosition(id),
+        scriptingConsent: true,
+        embedded: true,
+      }
+    })
+    return true
+  }
 
   $effect(() => {
     applyAppTheme(settings.theme)
@@ -125,8 +156,14 @@
 
   function handleRelocate(location: { cfi: string; fraction: number }): void {
     lastCfi = location.cfi
-    if (current) persistPosition(current.id, location.cfi, location.fraction)
+    if (!current) return
+    if (current.embedded) persistPayloadPosition(current.id, location.cfi)
+    else persistPosition(current.id, location.cfi, location.fraction)
   }
+
+  const persistPayloadPosition = debounce((id: string, cfi: string) => {
+    writePayloadPosition(id, cfi)
+  }, 500)
 
   // §3.4: both answers persist to the book's record. A grant re-renders the
   // book with scripts at the current position (replacing `current` remounts
@@ -149,6 +186,7 @@
 
   async function handleClose(): Promise<void> {
     persistPosition.flush()
+    persistPayloadPosition.flush()
     current = undefined
     await refresh()
   }
