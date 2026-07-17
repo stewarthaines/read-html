@@ -6,7 +6,7 @@ Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md
 
 The published contract lives in `docs/PAYLOAD_SLOT.md`. Accepted when (build: `npm run payload-check`; e2e: `e2e/payload.spec.ts`; unit: `tests/payload.test.ts`):
 
-- Both build targets carry the slot marker byte-for-byte, exactly once, plus the `readhtml-version` meta fed from `package.json` (now a real version, starting 1.0.0).
+- Both build targets carry the slot marker byte-for-byte, exactly once, plus the `readhtml-version` meta fed from `package.json` (now a real version, starting 0.1.0).
 - A payload-carrying page boots straight into the book (e2e injects base64 into the served HTML exactly as a publishing tool would); `?book=`/`?catalog=` are ignored; an undecodable payload shows the standard unreadable-book error.
 - The embedded book's scripts run with no consent prompt, and no consent grant is recorded anywhere — a subsequent normal import of the same book still prompts.
 - Reading position round-trips across reload via the dedicated `readhtml_payload_positions` key; the library gains no record.
