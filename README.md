@@ -4,10 +4,12 @@
 
 ## Reading
 
-- **Hosted**: open [read.readitinabook.com](https://read.readitinabook.com), then open a book with the file picker or drag one onto the page. Your library, positions, and settings stay in your browser — there are no accounts and no server storage.
-- **Single file**: download [`READ.html`](https://read.readitinabook.com/READ.html) and open it from disk. Everything works offline except fetching books and catalogs by URL. **Opened from disk (`file://`), it renders books in Firefox and Safari but not Chrome/Chromium** — Chromium blocks the `blob:` resources the engine uses inside a `file:`-origin page. Served over http(s) it works in every browser, so host the file if you need Chrome-from-a-link.
-- **Link to a book**: `https://read.readitinabook.com/?book=<url-of-epub>` opens an EPUB directly.
-- **Link to a catalog**: `https://read.readitinabook.com/?catalog=<url-of-opds-feed>` opens the catalog browser.
+READ.html is distributed as part of the [SEED.html](https://readitinabook.com) tool rather than on its own domain: the built app is served at `readitinabook.com/read/READ.html`.
+
+- **Hosted**: open the reader at its served URL, then open a book with the file picker or drag one onto the page. Your library, positions, and settings stay in your browser — there are no accounts and no server storage.
+- **Single file**: the same `READ.html` also works opened from disk. Everything works offline except fetching books and catalogs by URL. **Opened from disk (`file://`), it renders books in Firefox and Safari but not Chrome/Chromium** — Chromium blocks the `blob:` resources the engine uses inside a `file:`-origin page. Served over http(s) it works in every browser, so host the file if you need Chrome-from-a-link.
+- **Link to a book**: `<served-url>?book=<url-of-epub>` opens an EPUB directly.
+- **Link to a catalog**: `<served-url>?catalog=<url-of-opds-feed>` opens the catalog browser.
 
 ## Catalogs and CORS — read this if you publish
 
@@ -41,7 +43,7 @@ npm run test:e2e:update  # regenerates visual baselines in the CI Docker image
 
 The rendering engine is [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT), vendored at a pinned commit in `vendor/foliate-js/` — see `VENDORED.md` there for the pin, local patches, and update procedure. The founding spec is `docs/BOOTSTRAP.md`; living acceptance criteria are in `docs/SPEC.md`.
 
-Deploys run from CI on push to `main` to the Cloudflare Pages project `read-html` (wrangler; `cloudflare_api_token` / `cloudflare_account_id` CI secrets).
+CI (`.woodpecker.yml`) builds and validates only; it does not deploy. READ.html ships as part of the SEED.html deployment at `readitinabook.com/read/`, so that tool's pipeline is responsible for publishing the built artifact.
 
 ## Non-goals
 

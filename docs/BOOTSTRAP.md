@@ -15,7 +15,7 @@ This document is self-contained. It is the only context the implementing agent r
 **READ.html** is a focused, in-browser EPUB reader. Its mission: the simplest way to present an EPUB to a reader who doesn't know what EPUB is and couldn't open an `.epub` file if they had one. They click a link, the book opens, they read.
 
 - **Name**: READ.html. The distributable single file is `READ.html`. Functional identifiers use the `readhtml` prefix (`readhtml_*` localStorage keys, `readhtml-storage` IndexedDB database).
-- **Hosting**: `read.readitinabook.com`, deployed as a static site to the Cloudflare Pages project `read-html` by Woodpecker-style Codeberg CI on push to `main` (the owner wires the deploy credentials). `main` deploys — feature work happens on branches, merged when shippable.
+- **Hosting**: `read.readitinabook.com`, deployed as a static site to the Cloudflare Pages project `read-html` by Woodpecker-style Codeberg CI on push to `main` (the owner wires the deploy credentials). `main` deploys — feature work happens on branches, merged when shippable. _(Amendment, post-M7: the dedicated subdomain and Cloudflare deploy are dropped. READ.html is bundled into the SEED.html deployment and served at `readitinabook.com/read/READ.html`; that tool's pipeline publishes the built artifact. This repo's CI only builds and validates. **Consequence for §3.4's threat model — see the amendment there: sharing an origin with SEED.html removes the dedicated-origin protection the consent design leaned on.**)_
 - **Distribution**: two build targets from day one. (1) The hosted web app. (2) A single self-contained `READ.html` file (all assets inlined) that works offline from disk.
 - **License**: MIT. Repository is `read-html`, private on Codeberg (origin) with a public GitHub mirror; reader-facing links point at the mirror.
 - **Rendering engine**: [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT), EPUB modules only.
@@ -211,4 +211,4 @@ This project shares an operator and a domain with an EPUB _editor_ project, but 
 
 ## 11. Open items for the owner
 
-All product questions in this plan are resolved. One owner action remains: at M0, wire the Cloudflare Pages deploy credentials into the Codeberg CI pipeline.
+All product questions in this plan are resolved. One owner action remains: at M0, wire the Cloudflare Pages deploy credentials into the Codeberg CI pipeline. _(Amendment, post-M7: superseded — there is no Cloudflare deploy. READ.html ships inside the SEED.html deployment at `readitinabook.com/read/`; this repo builds and validates only. See the §3.4 threat-model amendment for the shared-origin consequence.)_

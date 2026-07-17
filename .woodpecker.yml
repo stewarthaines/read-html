@@ -27,26 +27,11 @@ steps:
     commands:
       - npx playwright test --project=chromium --project=webkit
 
+  # No deploy step: READ.html is not hosted on its own domain. It is bundled
+  # into the SEED.html deployment (readitinabook.com/read/READ.html); that
+  # tool's pipeline ships the built artifact. CI here only builds and validates.
   - name: e2e-firefox
     image: mcr.microsoft.com/playwright:v1.61.1-noble
     failure: ignore
     commands:
       - npx playwright test --project=firefox
-
-  # Deploys the hosted app to the Cloudflare Pages project `read-html`
-  # (§1); READ.html rides along as a downloadable artifact at /READ.html.
-  # Requires the woodpecker secrets cloudflare_api_token and
-  # cloudflare_account_id (§11 owner action).
-  - name: deploy
-    image: node:22
-    environment:
-      CLOUDFLARE_API_TOKEN:
-        from_secret: cloudflare_api_token
-      CLOUDFLARE_ACCOUNT_ID:
-        from_secret: cloudflare_account_id
-    commands:
-      - cp dist-single/READ.html dist/READ.html
-      - npx wrangler@4 pages deploy dist --project-name read-html --branch main
-    when:
-      - event: push
-        branch: main
