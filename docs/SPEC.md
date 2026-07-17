@@ -2,6 +2,17 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## M7 — ship
+
+Accepted when all of the following hold (e2e: `e2e/degraded.spec.ts`, `e2e/edge-books.spec.ts`; unit: additions to `tests/storage.test.ts`):
+
+- **Size budget**: CI fails if `dist-single/READ.html` exceeds 1.5 MB (`npm run size-check` after `build:single`).
+- **Feature 11, storage degradation**: a third `BookStorage` backend keeps everything in memory; detection order is OPFS → IndexedDB (probed by actually opening the DB) → memory. The metadata store falls back to an in-memory map when IndexedDB fails. When storage is memory-only the app shows a notice that books and positions will not survive the session; importing and reading still work. e2e proves it by disabling `indexedDB`/`navigator.storage`; `file://` boot is covered by smoke (Chromium). Verified manually and documented per browser in the README where e2e cannot reach.
+- **Fixtures (§6 completion)**: `fixed-layout.epub` (minimal FXL; rendering without crashing is the only v1 claim — e2e asserts it) and `no-metadata.epub` (title falls back to the file name, no author, no cover; e2e asserts the library fallbacks).
+- **About panel (§3.8)**: settings carries the app name, one plain sentence, the MIT license, and a link to the source repository — nothing else.
+- **README**: mission, hosted + single-file usage (READ.html downloadable from the site), deep links, catalogs with the CORS requirement documented prominently (§3.7), the scripting consent model and threat-model pointer, storage caveats (Safari seven-day eviction; `file://` and private-mode degradation), development guide, non-goals, MIT.
+- **Deploy pipeline**: on push to `main`, CI publishes `dist/` (with `READ.html` copied in as a downloadable artifact) to the Cloudflare Pages project `read-html` via wrangler; credentials come from CI secrets (`cloudflare_api_token`, `cloudflare_account_id`) — wiring those is the owner action from §11.
+
 ## M6 — catalog
 
 Accepted when all of the following hold (e2e: `e2e/catalog.spec.ts`; unit: `tests/catalog.test.ts`, `tests/saved-catalogs.test.ts`):
