@@ -7,7 +7,7 @@
 READ.html is distributed as part of the [SEED.html](https://readitinabook.com) tool rather than on its own domain: the built app is served at `readitinabook.com/read/READ.html`.
 
 - **Hosted**: open the reader at its served URL, then open a book with the file picker or drag one onto the page. Your library, positions, and settings stay in your browser — there are no accounts and no server storage.
-- **Single file**: the same `READ.html` also works opened from disk. Everything works offline except fetching books and catalogs by URL. **Opened from disk (`file://`), it renders books in Firefox and Safari but not Chrome/Chromium** — Chromium blocks the `blob:` resources the engine uses inside a `file:`-origin page. Served over http(s) it works in every browser, so host the file if you need Chrome-from-a-link.
+- **Single file**: the same `READ.html` also works opened from disk in every major browser, including Chrome. Everything works offline except fetching books and catalogs by URL.
 - **Link to a book**: `<served-url>?book=<url-of-epub>` opens an EPUB directly.
 - **Link to a catalog**: `<served-url>?catalog=<url-of-opds-feed>` opens the catalog browser.
 
