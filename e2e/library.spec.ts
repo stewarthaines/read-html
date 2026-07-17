@@ -17,11 +17,14 @@ test('an imported book appears in the library with cover, title, author, progres
 test('reading position persists across close, reopen, and reload', async ({ page }) => {
   await openFixture(page)
   const start = (await readingFraction(page)) ?? 0
-  const next = async () => {
+  // Retry only a dropped click (paginator ignores input while mid-animation),
+  // never re-clicking once it has moved; then settle past the debounce so the
+  // final relocate's CFI is persisted before we leave.
+  await expect(async () => {
     await page.getByRole('button', { name: 'Next page' }).click()
-    return readingFraction(page)
-  }
-  await expect.poll(next).toBeGreaterThan(start)
+    expect((await readingFraction(page)) ?? 0).toBeGreaterThan(start)
+  }).toPass({ timeout: 10000 })
+  await page.waitForTimeout(700)
   const advanced = (await readingFraction(page)) ?? 0
 
   await page.getByRole('button', { name: 'Library' }).click()
@@ -30,9 +33,8 @@ test('reading position persists across close, reopen, and reload', async ({ page
   await expect(item).toBeVisible()
   await item.click()
   await expect(page.frameLocator('iframe').getByText('Paragraph 1 of Chapter One')).toBeAttached()
-  // Two decimals is still page-exact (pages are ~0.16 apart in this fixture)
-  // but tolerant of a settling relocate between reading and closing.
-  await expect.poll(() => readingFraction(page)).toBeCloseTo(advanced, 2)
+  // Exact page: a single settled advance restores to the same fraction.
+  await expect.poll(() => readingFraction(page)).toBeCloseTo(advanced, 5)
 })
 
 test('re-importing the same file does not create a duplicate', async ({ page }) => {
