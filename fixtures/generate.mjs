@@ -637,6 +637,104 @@ function spacesCover() {
   return { filename: 'covers/spaces cover.svg', file: coverSvg('Spaces', '#556633') }
 }
 
+// --- Edge-case books (§6): minimal FXL, and missing-metadata fallbacks ---
+
+const FXL_OPF = `<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id" prefix="rendition: http://www.idpf.org/vocab/rendition/#">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">urn:uuid:00000000-0000-0000-0000-000000000006</dc:identifier>
+    <dc:title>Fixed Layout</dc:title>
+    <dc:creator>Fixture Author</dc:creator>
+    <dc:language>en</dc:language>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+    <meta property="rendition:layout">pre-paginated</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="page1" href="page1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="page2" href="page2.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="page1"/>
+    <itemref idref="page2"/>
+  </spine>
+</package>
+`
+
+/**
+ * @param {string} title
+ * @param {string} body
+ */
+function fxlPage(title, body) {
+  return `<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>${title}</title>
+    <meta name="viewport" content="width=400, height=600"/>
+  </head>
+  <body style="width: 400px; height: 600px; margin: 0;">
+    <h1 style="position: absolute; top: 40px; left: 40px;">${title}</h1>
+    <p style="position: absolute; top: 120px; left: 40px; width: 320px;">${body}</p>
+  </body>
+</html>
+`
+}
+
+/** @returns {Book} */
+function fixedLayout() {
+  return {
+    filename: 'fixed-layout.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      { name: 'OEBPS/package.opf', data: FXL_OPF },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml('Fixed Layout', [{ label: 'Page One', href: 'page1.xhtml' }]),
+      },
+      { name: 'OEBPS/page1.xhtml', data: fxlPage('Page One', 'A fixed-layout page.') },
+      { name: 'OEBPS/page2.xhtml', data: fxlPage('Page Two', 'Another fixed-layout page.') },
+    ],
+  }
+}
+
+// No dc:title, no dc:creator, no cover: the reader's fallbacks are the point.
+const NO_METADATA_OPF = `<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">urn:uuid:00000000-0000-0000-0000-000000000007</dc:identifier>
+    <dc:language>en</dc:language>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="chapter1"/>
+  </spine>
+</package>
+`
+
+/** @returns {Book} */
+function noMetadata() {
+  return {
+    filename: 'no-metadata.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      { name: 'OEBPS/package.opf', data: NO_METADATA_OPF },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml('Contents', [{ label: 'The Only Chapter', href: 'chapter1.xhtml' }]),
+      },
+      { name: 'OEBPS/chapter1.xhtml', data: chapterXhtml('The Only Chapter', 8) },
+    ],
+  }
+}
+
 const outputs = [
   basicLtr,
   rtlBook,
@@ -645,6 +743,8 @@ const outputs = [
   spacesInName,
   opdsCatalog,
   spacesCover,
+  fixedLayout,
+  noMetadata,
 ]
 
 mkdirSync(outDir, { recursive: true })
