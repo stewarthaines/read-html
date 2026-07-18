@@ -23,6 +23,8 @@
     file: Blob
     position: string | null
     scriptingConsent: boolean | undefined
+    /** Filename to save the open book under (the reader's download button). */
+    downloadName: string
     /** Embedded-payload book: session trust, dedicated position key. */
     embedded?: boolean
   }
@@ -72,6 +74,7 @@
         file,
         position: readPayloadPosition(id),
         scriptingConsent: true,
+        downloadName: file.name,
         embedded: true,
       }
     })
@@ -97,6 +100,7 @@
         file,
         position: record.position,
         scriptingConsent: record.scriptingConsent,
+        downloadName: downloadFileName(record),
       }
     } catch (cause) {
       error = t('This book could not be opened.') + ' ' + String(cause)
@@ -122,6 +126,7 @@
       file,
       position: record.position,
       scriptingConsent: record.scriptingConsent,
+      downloadName: downloadFileName(record),
     }
   }
 
@@ -160,6 +165,13 @@
       return
     }
     saveBlob(blob, downloadFileName(record))
+  }
+
+  // The reader's download button saves the exact bytes it opened, under the
+  // same name the library would use.
+  function handleReaderDownload(): void {
+    if (!current) return
+    saveBlob(current.file, current.downloadName)
   }
 
   // Reading position persists debounced (§3.3) and flushes on close so the
@@ -217,6 +229,7 @@
       scriptingConsent={current.scriptingConsent}
       onrelocate={handleRelocate}
       onconsent={handleConsent}
+      ondownload={handleReaderDownload}
       onclose={handleClose}
     />
   {/key}

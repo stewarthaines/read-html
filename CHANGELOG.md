@@ -4,6 +4,10 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ## [Unreleased]
 
+### Added
+
+- The reader has a **Download** button that saves the book you're reading, the same as downloading it from your library.
+
 ### Changed
 
 - Catalogs now open in a pane on the library screen; a browsed catalog fills the main area instead of taking over the screen.

@@ -18,3 +18,17 @@ test('downloads a library book with its original filename, byte-identical', asyn
   const path = await download.path()
   expect(readFileSync(path).equals(readFileSync(BASIC_LTR))).toBe(true)
 })
+
+test('the reader downloads the open book, byte-identical to the picker file', async ({ page }) => {
+  await openFixture(page)
+
+  const downloadPromise = page.waitForEvent('download')
+  // The reader toolbar's download button (left of settings), same icon as the
+  // library card's.
+  await page.getByRole('button', { name: 'Download' }).click()
+  const download = await downloadPromise
+
+  expect(download.suggestedFilename()).toBe('basic-ltr.epub')
+  const path = await download.path()
+  expect(readFileSync(path).equals(readFileSync(BASIC_LTR))).toBe(true)
+})

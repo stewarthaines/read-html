@@ -15,6 +15,7 @@
     scriptingConsent?: boolean | undefined
     onrelocate: (location: { cfi: string; fraction: number }) => void
     onconsent: (granted: boolean) => void
+    ondownload: () => void
     onclose: () => void
   }
   let {
@@ -23,6 +24,7 @@
     scriptingConsent = undefined,
     onrelocate,
     onconsent,
+    ondownload,
     onclose,
   }: Props = $props()
 
@@ -157,6 +159,7 @@
       >☰</button
     >
     <h1>{title}</h1>
+    <button onclick={ondownload} aria-label={t('Download')} title={t('Download')}>⤓</button>
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
     >
