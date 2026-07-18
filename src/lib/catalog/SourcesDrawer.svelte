@@ -4,12 +4,12 @@
   import { removeCatalog, savedCatalogs, setCatalogTrust, type SavedCatalog } from './saved.svelte'
 
   interface Props {
-    /** Show the downloaded collection (the reader's own books). */
-    ondownloaded: () => void
+    /** URL of the catalog currently displayed, or null on the collection. */
+    activeUrl: string | null
     /** Browse a catalog feed in the main area; `save` records a new URL. */
     onopencatalog: (url: string, options: { save: boolean }) => void
   }
-  let { ondownloaded, onopencatalog }: Props = $props()
+  let { activeUrl, onopencatalog }: Props = $props()
 
   let dialog: HTMLDialogElement
   let urlInput = $state('')
@@ -31,11 +31,6 @@
     dialog.close()
     onopencatalog(saved.url, { save: false })
   }
-
-  function showDownloaded(): void {
-    dialog.close()
-    ondownloaded()
-  }
 </script>
 
 <dialog bind:this={dialog} class="sources" aria-label={t('Sources')} use:backdropClose>
@@ -43,8 +38,6 @@
     <button onclick={() => dialog.close()} aria-label={t('Close')} title={t('Close')}>✕</button>
   </header>
   <nav>
-    <button class="downloaded" onclick={showDownloaded}>{t('Downloaded')}</button>
-
     <form onsubmit={handleAdd}>
       <label for="catalog-url">{t('Add a catalog by URL')}</label>
       <input id="catalog-url" type="url" bind:value={urlInput} placeholder="https://" required />
@@ -54,22 +47,27 @@
     {#if savedCatalogs().length > 0}
       <ul class="saved">
         {#each savedCatalogs() as saved (saved.url)}
-          <li>
+          {@const active = saved.url === activeUrl}
+          <li class:active aria-current={active ? 'true' : undefined}>
             <button class="link" onclick={() => openSaved(saved)}>{saved.title}</button>
-            <label class="trust">
-              <input
-                type="checkbox"
-                checked={saved.trustBooks}
-                onchange={(event) =>
-                  setCatalogTrust(saved.url, (event.currentTarget as HTMLInputElement).checked)}
-              />
-              {t('Trust books from this catalog')}
-            </label>
-            <button
-              class="remove"
-              onclick={() => removeCatalog(saved.url)}
-              aria-label="{t('Remove')} {saved.title}">✕</button
-            >
+            <!-- Trust and removal apply to the catalog you're viewing, so they
+                 appear only on the active one. -->
+            {#if active}
+              <label class="trust">
+                <input
+                  type="checkbox"
+                  checked={saved.trustBooks}
+                  onchange={(event) =>
+                    setCatalogTrust(saved.url, (event.currentTarget as HTMLInputElement).checked)}
+                />
+                {t('Trust books from this catalog')}
+              </label>
+              <button
+                class="remove"
+                onclick={() => removeCatalog(saved.url)}
+                aria-label="{t('Remove')} {saved.title}">✕</button
+              >
+            {/if}
           </li>
         {/each}
       </ul>
@@ -112,17 +110,6 @@
     gap: 1rem;
   }
 
-  .downloaded {
-    font: inherit;
-    text-align: start;
-    padding: 0.25rem 0;
-    background: none;
-    border: none;
-    color: LinkText;
-    text-decoration: underline;
-    cursor: pointer;
-  }
-
   form {
     display: flex;
     flex-direction: column;
@@ -148,6 +135,12 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.25rem 0.5rem;
+    padding-inline-start: 0.5rem;
+    border-inline-start: 2px solid transparent;
+  }
+
+  li.active {
+    border-inline-start-color: CanvasText;
   }
 
   .link {
@@ -161,6 +154,10 @@
     font: inherit;
     text-align: start;
     overflow-wrap: anywhere;
+  }
+
+  li.active .link {
+    font-weight: bold;
   }
 
   .trust {

@@ -19,12 +19,9 @@ async function loadFixtureCatalog(page: Page) {
   await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
 }
 
-test('the sources pane hosts a Downloaded link and adding a catalog browses it', async ({
-  page,
-}) => {
+test('adding a catalog from the sources pane browses it in the main area', async ({ page }) => {
   await page.goto('/')
   const drawer = await openSources(page)
-  await expect(drawer.getByRole('button', { name: 'Downloaded' })).toBeVisible()
   await drawer.getByLabel('Add a catalog by URL').fill(CATALOG_URL)
   await drawer.getByRole('button', { name: 'Add' }).click()
   // Feed renders in the main area; the drawer closed.
@@ -37,8 +34,8 @@ test('the sources pane hosts a Downloaded link and adding a catalog browses it',
 
 test('the back button returns from a feed to the library collection', async ({ page }) => {
   await loadFixtureCatalog(page)
-  // The feed's bar shows a back button and the catalog title (like the reader).
-  await page.getByRole('button', { name: 'Back' }).click()
+  // The feed's bar shows a back button (labelled Library, like the reader).
+  await page.getByRole('button', { name: 'Library' }).click()
   // Home: the bar reads "Library" and the file picker is the collection's control.
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
   await expect(page.getByText('Open a book')).toBeVisible()
@@ -78,12 +75,11 @@ test('a non-CORS catalog produces a friendly error naming CORS', async ({ page }
 
 test('trusted catalog auto-consents downloaded books (§3.4 step 4)', async ({ page }) => {
   await loadFixtureCatalog(page)
-  // The sources pane is reached from the collection, so step back out of the
-  // feed, trust the saved catalog, then re-open it (trust applies to the feed).
-  await page.getByRole('button', { name: 'Back' }).click()
+  // Trust controls appear on the active catalog, so open the pane while browsing
+  // it, check trust, and close back to the same feed.
   const drawer = await openSources(page)
   await drawer.getByRole('checkbox', { name: 'Trust books from this catalog' }).check()
-  await drawer.getByRole('button', { name: 'Fixture Catalog', exact: true }).click()
+  await drawer.getByRole('button', { name: 'Close' }).click()
   await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
 
   await page
@@ -100,11 +96,16 @@ test('trusted catalog auto-consents downloaded books (§3.4 step 4)', async ({ p
     .toMatch(/^blob:/)
 })
 
-test('?catalog= deep link browses the feed on load', async ({ page }) => {
+test('?catalog= deep link browses the feed on load and saves the catalog', async ({ page }) => {
   await page.goto(`/?catalog=${encodeURIComponent(CATALOG_URL)}`)
   await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
   await expect(page.getByText('Spaces In Name')).toBeVisible()
   expect(new URL(page.url()).search).toBe('')
+
+  // The deep-linked catalog is persisted: it survives a reload as a saved source.
+  await page.reload()
+  const drawer = await openSources(page)
+  await expect(drawer.getByRole('button', { name: 'Fixture Catalog', exact: true })).toBeVisible()
 })
 
 test('?book= deep link fetches and opens an EPUB, %20 included', async ({ page }) => {
@@ -136,10 +137,30 @@ test('drag-and-drop imports a book on the library', async ({ page }) => {
 test('the sources pane and a loaded feed have no accessibility violations', async ({ page }) => {
   await loadFixtureCatalog(page)
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
-  // The sources pane opens from the collection, so step back before opening it.
-  await page.getByRole('button', { name: 'Back' }).click()
+  // The sources pane is reachable while browsing (its menu stays in the bar).
   await openSources(page)
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+})
+
+test('the sources pane shows trust and removal only on the active catalog', async ({ page }) => {
+  await loadFixtureCatalog(page)
+  const drawer = await openSources(page)
+  const active = drawer.getByRole('listitem').filter({ hasText: 'Fixture Catalog' })
+  // The browsed catalog is marked active and carries its trust + remove controls.
+  await expect(active).toHaveAttribute('aria-current', 'true')
+  await expect(
+    active.getByRole('checkbox', { name: 'Trust books from this catalog' }),
+  ).toBeVisible()
+  await expect(active.getByRole('button', { name: 'Remove Fixture Catalog' })).toBeVisible()
+
+  // Return to the collection: with nothing active, those controls disappear.
+  await drawer.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Library' }).click()
+  const home = await openSources(page)
+  await expect(home.getByRole('checkbox', { name: 'Trust books from this catalog' })).toHaveCount(0)
+  await expect(home.getByRole('button', { name: 'Remove Fixture Catalog' })).toHaveCount(0)
+  // The catalog is still listed and can be re-opened.
+  await expect(home.getByRole('button', { name: 'Fixture Catalog', exact: true })).toBeVisible()
 })
 
 test('a book already in the library shows Open instead of Download', async ({ page }) => {

@@ -6,8 +6,10 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ### Changed
 
-- Catalogs now open in a pane on the library screen, with a **Downloaded** link back to your collection; a browsed catalog fills the main area instead of taking over the screen.
-- The library navigates like the reader: your collection is home (its bar reads **Library**), and browsing a catalog shows the catalog's title with a back button that returns to your collection.
+- Catalogs now open in a pane on the library screen; a browsed catalog fills the main area instead of taking over the screen.
+- The library navigates like the reader: your collection is home (its bar reads **Library**), and browsing a catalog shows the catalog's title with the sources menu still at hand and a back button that returns to your collection.
+- The sources pane highlights the catalog you're viewing and shows its trust and remove controls only for that one.
+- Opening a catalog by link (`?catalog=`) now remembers it as a saved source.
 - A catalog book you already have shows **Open** instead of **Download**, and opens your existing copy rather than fetching it again.
 
 ## [0.3.0] — 2026-07-18

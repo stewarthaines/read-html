@@ -27,7 +27,6 @@
 
   let settingsDialog: SettingsDialog
   let sourcesDrawer: SourcesDrawer
-  let catalogFeed: CatalogFeed | undefined = $state()
   // undefined = the downloaded collection; otherwise the catalog being browsed.
   let browse = $state<{ root: string; save: boolean }>()
   // The browsed feed's current title, shown in the bar (like the reader title).
@@ -42,12 +41,13 @@
   )
 
   // The deep-linked URL arrives from the parent after this child mounts (child
-  // onMount precedes parent onMount), so react to it once when it appears.
+  // onMount precedes parent onMount), so react to it once when it appears. A
+  // deep-linked catalog is saved (deduped) like one added by hand.
   let deepLinkApplied = false
   $effect(() => {
     if (!deepLinkApplied && initialCatalogUrl) {
       deepLinkApplied = true
-      browse = { root: initialCatalogUrl, save: false }
+      browse = { root: initialCatalogUrl, save: true }
     }
   })
 
@@ -76,23 +76,24 @@
 <SettingsDialog bind:this={settingsDialog} />
 <SourcesDrawer
   bind:this={sourcesDrawer}
-  ondownloaded={() => (browse = undefined)}
+  activeUrl={browse?.root ?? null}
   onopencatalog={(root, options) => (browse = { root, save: options.save })}
 />
 
 <div class="library">
-  <!-- Contextual bar (mirrors the reader): the collection is home, with the
-       sources menu and a "Library" title; a browsed catalog gets a back
-       button and the catalog's title. -->
+  <!-- Contextual bar (mirrors the reader's toolbar): the collection is home,
+       with the sources menu and a "Library" title. Browsing a catalog adds a
+       back button that always returns to the collection, and shows the
+       catalog's title. -->
   <header class="bar">
     {#if browse}
-      <button onclick={() => catalogFeed?.back()} aria-label={t('Back')} title={t('Back')}>‹</button
-      >
-    {:else}
-      <button onclick={() => sourcesDrawer.open()} aria-label={t('Sources')} title={t('Sources')}
-        >☰</button
+      <button onclick={() => (browse = undefined)} aria-label={t('Library')} title={t('Library')}
+        >←</button
       >
     {/if}
+    <button onclick={() => sourcesDrawer.open()} aria-label={t('Sources')} title={t('Sources')}
+      >☰</button
+    >
     <h1>{browse ? feedTitle : t('Library')}</h1>
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
@@ -103,13 +104,11 @@
     {#if browse}
       {#key browse.root}
         <CatalogFeed
-          bind:this={catalogFeed}
           root={browse.root}
           save={browse.save}
           {storage}
           {libraryByIdentifier}
           {onopen}
-          onhome={() => (browse = undefined)}
           ontitle={(value) => (feedTitle = value)}
         />
       {/key}

@@ -81,13 +81,14 @@ test('catalog: fixture feed loaded in the main area', async ({ page }) => {
 
 test('catalog: sources drawer open', async ({ page }) => {
   await loadFixtureCatalogFeed(page)
-  // The sources pane opens from the collection, so step back out of the feed
-  // first, then reopen the drawer so the saved catalog shows (exact name —
-  // "Remove Fixture Catalog" would otherwise also match).
-  await page.getByRole('button', { name: 'Back' }).click()
+  // Open the pane while browsing, so the saved catalog shows as active with its
+  // trust + remove controls (exact name — "Remove Fixture Catalog" also matches).
   await page.getByRole('button', { name: 'Sources' }).click()
   const drawer = page.getByRole('dialog', { name: 'Sources' })
   await expect(drawer.getByRole('button', { name: 'Fixture Catalog', exact: true })).toBeVisible()
+  await expect(
+    drawer.getByRole('checkbox', { name: 'Trust books from this catalog' }),
+  ).toBeVisible()
   await expect(page).toHaveScreenshot('sources-drawer.png')
 })
 

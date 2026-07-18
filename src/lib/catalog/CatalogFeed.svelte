@@ -15,19 +15,15 @@
     /** Library books keyed by dc:identifier, to detect books already held. */
     libraryByIdentifier: Map<string, BookRecord>
     onopen: (record: BookRecord) => void
-    /** Called by back() when leaving the root feed (returns to the collection). */
-    onhome: () => void
     /** Reports the current feed title, for the library's top bar. */
     ontitle: (title: string) => void
   }
-  let { root, save, storage, libraryByIdentifier, onopen, onhome, ontitle }: Props = $props()
+  let { root, save, storage, libraryByIdentifier, onopen, ontitle }: Props = $props()
 
   let feed = $state<CatalogFeed>()
   let loading = $state(false)
   let error = $state('')
   let busyHref = $state('')
-  // Sub-feed navigation within this session; the root stays at index 0.
-  let trail = $state<string[]>([])
 
   // §3.4 step 4: downloads are auto-consented when the saved root is trusted.
   const trusted = $derived(savedCatalogs().find((c) => c.url === root)?.trustBooks === true)
@@ -37,7 +33,6 @@
   })
 
   onMount(() => {
-    trail = [root]
     void load(root, save)
   })
 
@@ -55,20 +50,10 @@
     }
   }
 
+  // Sub-feeds load in place; the library bar's back button always returns to
+  // the collection (no per-catalog breadcrumb trail).
   function browse(url: string): void {
-    trail = [...trail, url]
     void load(url)
-  }
-
-  // The library bar's back button; pops a sub-feed, else returns to the
-  // collection. Exposed for that bar via bind:this.
-  export function back(): void {
-    if (trail.length > 1) {
-      trail = trail.slice(0, -1)
-      void load(trail[trail.length - 1])
-    } else {
-      onhome()
-    }
   }
 
   async function download(href: string): Promise<void> {
