@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import Catalog from './lib/catalog/Catalog.svelte'
   import { downloadBook } from './lib/catalog/download'
   import { downloadFileName, saveBlob } from './lib/library/download'
   import { t } from './lib/i18n/index.svelte'
@@ -32,7 +31,8 @@
 
   let books = $state<BookRecord[]>([])
   let current = $state<OpenedBook>()
-  let catalog = $state<{ initialUrl: string | null }>()
+  // Deep-linked catalog (?catalog=), browsed by the library's sources pane.
+  let initialCatalogUrl = $state<string | null>(null)
   let error = $state('')
   // Feature 11: memory-only storage still reads books but keeps nothing.
   let volatileStorage = $state(false)
@@ -51,7 +51,7 @@
     const catalogUrl = params.get('catalog')
     if (bookUrl || catalogUrl) history.replaceState(null, '', location.pathname)
     if (bookUrl) void openFromUrl(bookUrl)
-    else if (catalogUrl) catalog = { initialUrl: catalogUrl }
+    else if (catalogUrl) initialCatalogUrl = catalogUrl
   })
 
   // Embedded book: trusted by construction for this session only — consent
@@ -91,6 +91,7 @@
     try {
       const record = await importBook(await storage, file)
       lastCfi = null
+      initialCatalogUrl = null
       current = {
         id: record.id,
         file,
@@ -114,7 +115,8 @@
     }
     await updateBook(record.id, { lastOpened: Date.now() })
     lastCfi = null
-    catalog = undefined
+    // A consumed deep link must not re-open the catalog when the reader closes.
+    initialCatalogUrl = null
     current = {
       id: record.id,
       file,
@@ -218,16 +220,6 @@
       onclose={handleClose}
     />
   {/key}
-{:else if catalog}
-  <Catalog
-    {storage}
-    initialUrl={catalog.initialUrl}
-    onopen={handleOpen}
-    onback={async () => {
-      catalog = undefined
-      await refresh()
-    }}
-  />
 {:else}
   {#if volatileStorage}
     <p role="status" class="notice">
@@ -241,11 +233,12 @@
   {/if}
   <Library
     {books}
+    {storage}
+    {initialCatalogUrl}
     onpick={handlePick}
     onopen={handleOpen}
     ondelete={handleDelete}
     ondownload={handleDownload}
-    oncatalogs={() => (catalog = { initialUrl: null })}
   />
 {/if}
 

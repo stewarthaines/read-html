@@ -1,19 +1,44 @@
 <script lang="ts">
+  import CatalogFeed from '../catalog/CatalogFeed.svelte'
+  import SourcesDrawer from '../catalog/SourcesDrawer.svelte'
   import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
-  import type { BookRecord } from '../storage/types'
+  import type { BookRecord, BookStorage } from '../storage/types'
 
   interface Props {
     books: BookRecord[]
+    storage: Promise<BookStorage>
+    /** Deep-linked catalog URL (?catalog=) to browse on load. */
+    initialCatalogUrl?: string | null
     onopen: (book: BookRecord) => void
     ondelete: (book: BookRecord) => void
     ondownload: (book: BookRecord) => void
     onpick: (file: File) => void
-    oncatalogs: () => void
   }
-  let { books, onopen, ondelete, ondownload, onpick, oncatalogs }: Props = $props()
+  let {
+    books,
+    storage,
+    initialCatalogUrl = null,
+    onopen,
+    ondelete,
+    ondownload,
+    onpick,
+  }: Props = $props()
 
   let settingsDialog: SettingsDialog
+  let sourcesDrawer: SourcesDrawer
+  // undefined = the downloaded collection; otherwise the catalog being browsed.
+  let browse = $state<{ root: string; save: boolean }>()
+
+  // The deep-linked URL arrives from the parent after this child mounts (child
+  // onMount precedes parent onMount), so react to it once when it appears.
+  let deepLinkApplied = false
+  $effect(() => {
+    if (!deepLinkApplied && initialCatalogUrl) {
+      deepLinkApplied = true
+      browse = { root: initialCatalogUrl, save: false }
+    }
+  })
 
   let coverUrls = $state<Map<string, string>>(new Map())
   $effect(() => {
@@ -38,68 +63,105 @@
 </script>
 
 <SettingsDialog bind:this={settingsDialog} />
+<SourcesDrawer
+  bind:this={sourcesDrawer}
+  ondownloaded={() => (browse = undefined)}
+  onopencatalog={(root, options) => (browse = { root, save: options.save })}
+/>
 
-<main>
-  <button
-    class="settings"
-    onclick={() => settingsDialog.open()}
-    aria-label={t('Settings')}
-    title={t('Settings')}>⚙</button
-  >
-  <h1><label for="book-file">{t('Open a book')}</label></h1>
-  <input id="book-file" type="file" accept=".epub,application/epub+zip" onchange={handlePick} />
-  <button class="catalogs" onclick={oncatalogs}>{t('Catalogs')}</button>
-  {#if books.length > 0}
-    <ul class="books">
-      {#each books as book (book.id)}
-        <li>
-          <button class="open" onclick={() => onopen(book)}>
-            {#if coverUrls.has(book.id)}
-              <img class="cover" src={coverUrls.get(book.id)} alt="" />
-            {:else}
-              <span class="cover" aria-hidden="true"></span>
-            {/if}
-            <span class="title">{book.title}</span>
-            <span class="author">{book.author}</span>
-            <span class="progress">{Math.round(book.fraction * 100)}%</span>
-          </button>
-          <button
-            class="download"
-            onclick={() => ondownload(book)}
-            aria-label="{t('Download')} {book.title}"
-            title={t('Download')}>⤓</button
-          >
-          <button
-            class="delete"
-            onclick={() => ondelete(book)}
-            aria-label="{t('Delete')} {book.title}">✕</button
-          >
-        </li>
-      {/each}
-    </ul>
-  {/if}
-</main>
+<div class="library">
+  <header class="bar">
+    <button onclick={() => sourcesDrawer.open()} aria-label={t('Sources')} title={t('Sources')}
+      >☰</button
+    >
+    <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
+      >⚙</button
+    >
+  </header>
+
+  <main>
+    {#if browse}
+      {#key browse.root}
+        <CatalogFeed root={browse.root} save={browse.save} {storage} {onopen} />
+      {/key}
+    {:else}
+      <div class="collection">
+        <h1><label for="book-file">{t('Open a book')}</label></h1>
+        <input
+          id="book-file"
+          type="file"
+          accept=".epub,application/epub+zip"
+          onchange={handlePick}
+        />
+        {#if books.length > 0}
+          <ul class="books">
+            {#each books as book (book.id)}
+              <li>
+                <button class="open" onclick={() => onopen(book)}>
+                  {#if coverUrls.has(book.id)}
+                    <img class="cover" src={coverUrls.get(book.id)} alt="" />
+                  {:else}
+                    <span class="cover" aria-hidden="true"></span>
+                  {/if}
+                  <span class="booktitle">{book.title}</span>
+                  <span class="author">{book.author}</span>
+                  <span class="progress">{Math.round(book.fraction * 100)}%</span>
+                </button>
+                <button
+                  class="download"
+                  onclick={() => ondownload(book)}
+                  aria-label="{t('Download')} {book.title}"
+                  title={t('Download')}>⤓</button
+                >
+                <button
+                  class="delete"
+                  onclick={() => ondelete(book)}
+                  aria-label="{t('Delete')} {book.title}">✕</button
+                >
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
+  </main>
+</div>
 
 <style>
-  main {
+  .library {
+    display: flex;
+    flex-direction: column;
     min-height: 100svh;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-block-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  }
+
+  .bar button {
+    font-size: 1rem;
+    min-inline-size: 2rem;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .collection {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 1rem;
-    padding: 1rem;
-    position: relative;
-  }
-
-  .settings {
-    position: absolute;
-    inset-block-start: 0.5rem;
-    inset-inline-end: 0.5rem;
-    /* Match the reader toolbar's settings button sizing (font-size 1rem,
-       min-inline-size 2rem) so the gear is consistent across views. */
-    font-size: 1rem;
-    min-inline-size: 2rem;
   }
 
   h1 {
@@ -146,7 +208,7 @@
     display: block;
   }
 
-  .title {
+  .booktitle {
     max-inline-size: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
