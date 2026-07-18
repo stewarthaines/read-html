@@ -2,7 +2,7 @@ import { renameSync } from 'node:fs'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
-import { readhtmlVersion } from './vite.config'
+import { BUILD_TARGET, readhtmlVersion } from './vite.config'
 
 // Second build target (§1): one self-contained READ.html that works offline
 // from disk. viteSingleFile inlines all assets and collapses the vendored
@@ -19,5 +19,5 @@ export default defineConfig({
       },
     },
   ],
-  build: { outDir: 'dist-single' },
+  build: { outDir: 'dist-single', target: BUILD_TARGET },
 })
