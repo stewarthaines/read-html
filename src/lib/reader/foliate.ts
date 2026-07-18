@@ -18,7 +18,7 @@ interface ManifestItem {
 }
 
 interface FoliateBook {
-  metadata?: { title?: unknown; author?: unknown; identifier?: unknown }
+  metadata?: { title?: unknown; author?: unknown; identifier?: unknown; modified?: unknown }
   toc?: TocItem[]
   dir?: string
   transformTarget: EventTarget
@@ -121,6 +121,8 @@ export interface BookInfo {
   title: string
   author: string
   identifier: string
+  /** The EPUB's dcterms:modified (Release Identifier version), '' if absent. */
+  modified: string
   cover: Blob | null
 }
 
@@ -130,6 +132,7 @@ export async function readBookInfo(file: Blob): Promise<BookInfo> {
     title: languageMapText(book.metadata?.title),
     author: contributorsText(book.metadata?.author),
     identifier: typeof book.metadata?.identifier === 'string' ? book.metadata.identifier : '',
+    modified: typeof book.metadata?.modified === 'string' ? book.metadata.modified : '',
     cover: (await book.getCover?.()) ?? null,
   }
 }

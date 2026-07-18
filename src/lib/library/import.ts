@@ -14,9 +14,10 @@ export async function importBook(storage: BookStorage, file: File): Promise<Book
     // Backfill fields captured after this record was first imported.
     const patch: Partial<BookRecord> = { lastOpened: now }
     if (!existing.fileName && file.name) patch.fileName = file.name
-    if (!existing.identifier) {
-      const identifier = (await readBookInfo(file)).identifier
-      if (identifier) patch.identifier = identifier
+    if (!existing.identifier || !existing.modified) {
+      const info = await readBookInfo(file)
+      if (!existing.identifier && info.identifier) patch.identifier = info.identifier
+      if (!existing.modified && info.modified) patch.modified = info.modified
     }
     await updateBook(id, patch)
     return { ...existing, ...patch }
@@ -28,6 +29,7 @@ export async function importBook(storage: BookStorage, file: File): Promise<Book
     author: info.author,
     fileName: file.name || undefined,
     identifier: info.identifier || undefined,
+    modified: info.modified || undefined,
     coverThumb: info.cover ? await makeCoverThumb(info.cover) : null,
     position: null,
     fraction: 0,

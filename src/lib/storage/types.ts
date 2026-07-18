@@ -21,6 +21,10 @@ export interface BookRecord {
   /** The EPUB's dc:identifier, used to detect a catalog book already in the
    *  library; absent when the EPUB declares none or for pre-0.3 records. */
   identifier?: string
+  /** The EPUB's dcterms:modified — with `identifier`, the Release Identifier
+   *  used to detect that a catalog offers a newer version of a held book.
+   *  Absent when the EPUB declares none or for records from before this field. */
+  modified?: string
   coverThumb: Blob | null
   /** Reading position as an EPUB CFI string; null before first relocate. */
   position: string | null
