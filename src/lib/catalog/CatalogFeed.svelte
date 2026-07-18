@@ -15,10 +15,12 @@
     /** Library books keyed by dc:identifier, to detect books already held. */
     libraryByIdentifier: Map<string, BookRecord>
     onopen: (record: BookRecord) => void
+    /** Replaces a held book with a freshly downloaded newer version. */
+    onupdate: (previous: BookRecord, updated: BookRecord) => void
     /** Reports the current feed title, for the library's top bar. */
     ontitle: (title: string) => void
   }
-  let { root, save, storage, libraryByIdentifier, onopen, ontitle }: Props = $props()
+  let { root, save, storage, libraryByIdentifier, onopen, onupdate, ontitle }: Props = $props()
 
   let feed = $state<CatalogFeed>()
   let loading = $state(false)
@@ -69,8 +71,50 @@
     }
   }
 
+  // A teaser (partial entry) carries no acquisition link; resolve its detail
+  // feed to the EPUB and acquire that. A detail feed with no EPUB is a loud
+  // failure, not a silent no-op.
+  async function resolve(detailHref: string): Promise<void> {
+    busyHref = detailHref
+    error = ''
+    try {
+      const detail = await fetchCatalog(detailHref)
+      const epub = detail.entries.find((entry) => entry.kind === 'epub')
+      if (!epub) throw new Error(t('No EPUB found for this book.'))
+      const record = await downloadBook(await storage, epub.href, trusted)
+      onopen(record)
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      busyHref = ''
+    }
+  }
+
+  // Re-download a held book's newer version; the parent replaces the old copy.
+  async function update(previous: BookRecord, href: string): Promise<void> {
+    busyHref = href
+    error = ''
+    try {
+      const updated = await downloadBook(await storage, href, trusted)
+      onupdate(previous, updated)
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      busyHref = ''
+    }
+  }
+
   function heldBook(identifier: string | null): BookRecord | undefined {
     return identifier ? libraryByIdentifier.get(identifier) : undefined
+  }
+
+  // A catalog entry offers an update when its version is strictly newer than
+  // the held copy's. Unparseable/absent dates never claim an update.
+  function updatable(version: string | null, held: BookRecord | undefined): boolean {
+    if (!held?.modified || !version) return false
+    const offered = Date.parse(version)
+    const owned = Date.parse(held.modified)
+    return !Number.isNaN(offered) && !Number.isNaN(owned) && offered > owned
   }
 </script>
 
@@ -83,7 +127,9 @@
 
   {#if feed}
     <ul class="entries">
-      {#each feed.entries as entry (entry.href)}
+      <!-- Keyed by position: the list is replaced wholesale on each load, and
+           entries need not have unique hrefs (unsupported ones have none). -->
+      {#each feed.entries as entry, index (index)}
         {@const held = heldBook(entry.identifier)}
         <li>
           {#if entry.coverUrl}
@@ -98,6 +144,16 @@
           </div>
           {#if entry.kind === 'feed'}
             <button onclick={() => browse(entry.href)}>{t('Browse')}</button>
+          {:else if entry.kind === 'unsupported'}
+            <button class="badge" disabled title={entry.label ?? ''}>{entry.label}</button>
+          {:else if entry.kind === 'teaser'}
+            <button disabled={busyHref === entry.href} onclick={() => resolve(entry.href)}>
+              {busyHref === entry.href ? t('Downloading…') : t('Download')}
+            </button>
+          {:else if held && updatable(entry.version, held)}
+            <button disabled={busyHref === entry.href} onclick={() => update(held, entry.href)}>
+              {busyHref === entry.href ? t('Updating…') : t('Update available')}
+            </button>
           {:else if held}
             <button onclick={() => onopen(held)}>{t('Open')}</button>
           {:else}
@@ -134,6 +190,13 @@
 
   li button {
     font: inherit;
+  }
+
+  /* An unavailable acquisition: greyed, non-interactive, labelled with why. */
+  .badge {
+    color: color-mix(in srgb, CanvasText 55%, Canvas);
+    border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
+    background: none;
   }
 
   .cover {

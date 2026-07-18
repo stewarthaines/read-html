@@ -167,6 +167,17 @@
     saveBlob(blob, downloadFileName(record))
   }
 
+  // Replace a held book with a newer version acquired from a catalog. The new
+  // bytes import under their own content hash; drop the prior record unless the
+  // download turned out to be byte-identical (same id — a no-op update).
+  async function handleUpdate(previous: BookRecord, updated: BookRecord): Promise<void> {
+    if (updated.id !== previous.id) {
+      await (await storage).delete(previous.id)
+      await deleteBook(previous.id)
+    }
+    await handleOpen(updated)
+  }
+
   // The reader's download button saves the exact bytes it opened, under the
   // same name the library would use.
   function handleReaderDownload(): void {
@@ -250,6 +261,7 @@
     {initialCatalogUrl}
     onpick={handlePick}
     onopen={handleOpen}
+    onupdate={handleUpdate}
     ondelete={handleDelete}
     ondownload={handleDownload}
   />

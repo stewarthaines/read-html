@@ -7,9 +7,12 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 ### Added
 
 - The reader has a **Download** button that saves the book you're reading, the same as downloading it from your library.
+- Catalog books that link to a details page (like Project Gutenberg's listings) now show up with their covers and download in one click, and a book offered in several formats downloads as EPUB.
+- A catalog entry for a book already in your library shows **Update available** when the catalog offers a newer version, and updating replaces your copy.
 
 ### Changed
 
+- Books that a catalog only offers to buy, borrow, or as a non-EPUB format are shown but marked, rather than failing when you try to open them.
 - Catalogs now open in a pane on the library screen; a browsed catalog fills the main area instead of taking over the screen.
 - The library navigates like the reader: your collection is home (its bar reads **Library**), and browsing a catalog shows the catalog's title with the sources menu still at hand and a back button that returns to your collection.
 - The sources pane highlights the catalog you're viewing and shows its trust and remove controls only for that one.

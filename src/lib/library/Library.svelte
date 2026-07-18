@@ -11,6 +11,7 @@
     /** Deep-linked catalog URL (?catalog=) to browse on load. */
     initialCatalogUrl?: string | null
     onopen: (book: BookRecord) => void
+    onupdate: (previous: BookRecord, updated: BookRecord) => void
     ondelete: (book: BookRecord) => void
     ondownload: (book: BookRecord) => void
     onpick: (file: File) => void
@@ -20,6 +21,7 @@
     storage,
     initialCatalogUrl = null,
     onopen,
+    onupdate,
     ondelete,
     ondownload,
     onpick,
@@ -109,6 +111,7 @@
           {storage}
           {libraryByIdentifier}
           {onopen}
+          {onupdate}
           ontitle={(value) => (feedTitle = value)}
         />
       {/key}

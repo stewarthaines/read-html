@@ -186,3 +186,76 @@ test('a book already in the library shows Open instead of Download', async ({ pa
     page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
   ).toBeVisible()
 })
+
+const RICH_URL = `${FIXTURES}/catalog-rich.xml`
+
+async function loadRichCatalog(page: Page) {
+  await page.goto('/')
+  const drawer = await openSources(page)
+  await drawer.getByLabel('Add a catalog by URL').fill(RICH_URL)
+  await drawer.getByRole('button', { name: 'Add' }).click()
+  await expect(page.getByRole('heading', { name: 'Rich Catalog' })).toBeVisible()
+}
+
+test('a multi-format entry downloads the EPUB, not another format', async ({ page }) => {
+  await loadRichCatalog(page)
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Multi Format Book' })
+    .getByRole('button', { name: 'Download' })
+    .click()
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+})
+
+test('entries we cannot acquire in-app are shown disabled with a reason', async ({ page }) => {
+  await loadRichCatalog(page)
+  const kindle = page
+    .getByRole('listitem')
+    .filter({ hasText: 'Kindle Only Book' })
+    .getByRole('button', { name: 'Kindle' })
+  await expect(kindle).toBeVisible()
+  await expect(kindle).toBeDisabled()
+  const buy = page
+    .getByRole('listitem')
+    .filter({ hasText: 'For Sale Book' })
+    .getByRole('button', { name: 'Buy' })
+  await expect(buy).toBeDisabled()
+})
+
+test('a teaser entry auto-resolves to its EPUB and opens it', async ({ page }) => {
+  await loadRichCatalog(page)
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Teaser Book' })
+    .getByRole('button', { name: 'Download' })
+    .click()
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+})
+
+test('a newer catalog version shows Update available and replaces the held copy', async ({
+  page,
+}) => {
+  // Hold version one (imported from disk carries its dcterms:modified).
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/versioned-v1.epub')
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Version One' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Library' }).click()
+
+  // The rich catalog advertises a newer version of the same publication.
+  await loadRichCatalog(page)
+  const versioned = page.getByRole('listitem').filter({ hasText: 'Versioned Book' })
+  await versioned.getByRole('button', { name: 'Update available' }).click()
+
+  // The updated content opens, and the library holds a single (replaced) copy.
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Version Two' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Library' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Versioned Book' })).toHaveCount(1)
+})

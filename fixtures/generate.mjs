@@ -190,6 +190,7 @@ function coverSvg(title, background) {
  *   spineAttrs?: string,
  *   extraManifest?: string[],
  *   coverHref?: string,
+ *   modified?: string,
  * }} meta
  */
 function packageOpf({
@@ -201,6 +202,7 @@ function packageOpf({
   spineAttrs = '',
   extraManifest = [],
   coverHref = 'cover.svg',
+  modified = '2026-01-01T00:00:00Z',
 }) {
   const manifestItems = [
     '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
@@ -229,7 +231,7 @@ function packageOpf({
     <dc:title>${title}</dc:title>
     <dc:creator>${creator}</dc:creator>
     <dc:language>${language}</dc:language>
-    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+    <meta property="dcterms:modified">${modified}</meta>
   </metadata>
   <manifest>
 ${manifestItems}
@@ -640,6 +642,127 @@ function spacesCover() {
   return { filename: 'covers/spaces cover.svg', file: coverSvg('Spaces', '#556633') }
 }
 
+// --- OPDS Tier-1 fixtures: richer feed shapes (multi-format, unsupported,
+// teaser, and a versioned book for update detection) ---
+
+// Two releases of one publication: same dc:identifier, different content and
+// dcterms:modified, so the second is a genuine byte-different newer version.
+/**
+ * @param {number} n
+ * @param {string} modified
+ * @param {string} chapterTitle
+ * @returns {Book}
+ */
+function versionedBook(n, modified, chapterTitle) {
+  const title = 'Versioned Book'
+  const chapters = [{ file: 'chapter1.xhtml', title: chapterTitle }]
+  return {
+    filename: `versioned-v${n}.epub`,
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000009',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters,
+          modified,
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(title, [{ label: chapterTitle, href: 'chapter1.xhtml' }]),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('V', '#772244') },
+      { name: 'OEBPS/chapter1.xhtml', data: chapterXhtml(chapterTitle, 8) },
+    ],
+  }
+}
+
+/** @returns {Book} */
+const versionedV1 = () => versionedBook(1, '2020-01-01T00:00:00Z', 'Version One')
+/** @returns {Book} */
+const versionedV2 = () => versionedBook(2, '2026-06-01T00:00:00Z', 'Version Two')
+
+// A rich acquisition feed exercising each entry kind. Kept separate from
+// catalog.xml so the existing catalog tests and baseline stay stable.
+const CATALOG_RICH_XML = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/">
+  <title>Rich Catalog</title>
+  <id>urn:uuid:00000000-0000-0000-0000-00000000c002</id>
+  <updated>2026-01-01T00:00:00Z</updated>
+  <entry>
+    <title>Multi Format Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-00000000000b</id>
+    <dc:identifier>urn:uuid:00000000-0000-0000-0000-00000000000b</dc:identifier>
+    <author><name>Fixture Author</name></author>
+    <summary>Offered as Kindle and EPUB; the reader takes the EPUB.</summary>
+    <link rel="http://opds-spec.org/acquisition" type="application/x-mobipocket-ebook" href="missing.mobi"/>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="basic-ltr.epub"/>
+  </entry>
+  <entry>
+    <title>Kindle Only Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-00000000000c</id>
+    <author><name>Fixture Author</name></author>
+    <summary>Only a Kindle format is offered.</summary>
+    <link rel="http://opds-spec.org/acquisition" type="application/x-mobipocket-ebook" href="missing.mobi"/>
+  </entry>
+  <entry>
+    <title>For Sale Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-00000000000d</id>
+    <author><name>Fixture Author</name></author>
+    <summary>An EPUB, but only for purchase.</summary>
+    <link rel="http://opds-spec.org/acquisition/buy" type="application/epub+zip" href="buy"/>
+  </entry>
+  <entry>
+    <title>Teaser Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-00000000000e</id>
+    <content type="text">Fixture Author</content>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="teaser-detail.xml"/>
+    <link rel="http://opds-spec.org/image/thumbnail" type="image/svg+xml" href="covers/spaces%20cover.svg"/>
+  </entry>
+  <entry>
+    <title>Versioned Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-000000000009</id>
+    <dc:identifier>urn:uuid:00000000-0000-0000-0000-000000000009</dc:identifier>
+    <dcterms:modified>2026-06-01T00:00:00Z</dcterms:modified>
+    <author><name>Fixture Author</name></author>
+    <summary>Newer than the held copy.</summary>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="versioned-v2.epub"/>
+  </entry>
+</feed>
+`
+
+/** @returns {PlainFile} */
+function richCatalog() {
+  return { filename: 'catalog-rich.xml', file: CATALOG_RICH_XML }
+}
+
+// The per-book detail feed a teaser resolves to: a full acquisition entry.
+const TEASER_DETAIL_XML = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title>Teaser Book</title>
+  <id>urn:uuid:00000000-0000-0000-0000-00000000000e</id>
+  <updated>2026-01-01T00:00:00Z</updated>
+  <entry>
+    <title>Teaser Book</title>
+    <id>urn:uuid:00000000-0000-0000-0000-000000000001</id>
+    <dc:identifier>urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>
+    <author><name>Fixture Author</name></author>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="basic-ltr.epub"/>
+  </entry>
+</feed>
+`
+
+/** @returns {PlainFile} */
+function teaserDetail() {
+  return { filename: 'teaser-detail.xml', file: TEASER_DETAIL_XML }
+}
+
 // --- Edge-case books (§6): minimal FXL, and missing-metadata fallbacks ---
 
 const FXL_OPF = `<?xml version="1.0" encoding="utf-8"?>
@@ -800,6 +923,10 @@ const outputs = [
   spacesInName,
   opdsCatalog,
   spacesCover,
+  richCatalog,
+  teaserDetail,
+  versionedV1,
+  versionedV2,
   fixedLayout,
   noMetadata,
   longToc,

@@ -92,6 +92,31 @@ test('catalog: sources drawer open', async ({ page }) => {
   await expect(page).toHaveScreenshot('sources-drawer.png')
 })
 
+test('catalog: rich feed shows each entry kind', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Sources' }).click()
+  const drawer = page.getByRole('dialog', { name: 'Sources' })
+  await expect(drawer).toBeVisible()
+  await drawer.getByLabel('Add a catalog by URL').fill('http://127.0.0.1:4174/catalog-rich.xml')
+  await drawer.getByRole('button', { name: 'Add' }).click()
+  await expect(drawer).not.toBeVisible()
+  // Disabled badges (Kindle/Buy) alongside downloadable and teaser entries.
+  await expect(page.getByRole('button', { name: 'Kindle' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Buy' })).toBeDisabled()
+  await expect
+    .poll(() =>
+      page
+        .locator('img.cover')
+        .first()
+        .evaluate((img) => {
+          const image = img as HTMLImageElement
+          return image.complete && image.naturalWidth > 0
+        }),
+    )
+    .toBe(true)
+  await expect(page).toHaveScreenshot('catalog-rich.png')
+})
+
 test('library: one imported book', async ({ page }) => {
   await openFixture(page)
   await page.getByRole('button', { name: 'Library' }).click()
