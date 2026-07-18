@@ -4,6 +4,10 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ## [Unreleased]
 
+### Added
+
+- The reader can be installed as an app where the site hosting it provides a web app manifest; nothing changes for readers whose host doesn't.
+
 ### Fixed
 
 - Books now open on older browsers such as iOS 16 (e.g. iPhone 8), which previously failed with "undefined is not a function" when opening any EPUB.
