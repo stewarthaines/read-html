@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+
+- Catalogs now open in a pane on the library screen, with a **Downloaded** link back to your collection; a browsed catalog fills the main area instead of taking over the screen.
+
 ## [0.3.0] — 2026-07-18
 
 ### Added
