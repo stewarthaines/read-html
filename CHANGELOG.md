@@ -2,12 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
-## [Unreleased]
+## [0.4.0] — 2026-07-18
 
 ### Added
 
 - The reader has a **Download** button that saves the book you're reading, the same as downloading it from your library.
-- Catalog books that link to a details page (like Project Gutenberg's listings) now show up with their covers and download in one click, and a book offered in several formats downloads as EPUB.
+- Browsing a catalog now shows books that link to a details page (like Project Gutenberg's listings) with their covers, and prefers the EPUB when a book is offered in several formats; whether a book can then be downloaded depends on its server allowing cross-origin (CORS) access.
 - A catalog entry for a book already in your library shows **Update available** when the catalog offers a newer version, and updating replaces your copy.
 
 ### Changed
