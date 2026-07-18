@@ -18,7 +18,7 @@ interface ManifestItem {
 }
 
 interface FoliateBook {
-  metadata?: { title?: unknown; author?: unknown }
+  metadata?: { title?: unknown; author?: unknown; identifier?: unknown }
   toc?: TocItem[]
   dir?: string
   transformTarget: EventTarget
@@ -120,6 +120,7 @@ function contributorsText(value: unknown): string {
 export interface BookInfo {
   title: string
   author: string
+  identifier: string
   cover: Blob | null
 }
 
@@ -128,6 +129,7 @@ export async function readBookInfo(file: Blob): Promise<BookInfo> {
   return {
     title: languageMapText(book.metadata?.title),
     author: contributorsText(book.metadata?.author),
+    identifier: typeof book.metadata?.identifier === 'string' ? book.metadata.identifier : '',
     cover: (await book.getCover?.()) ?? null,
   }
 }

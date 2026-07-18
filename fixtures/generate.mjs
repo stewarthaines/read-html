@@ -595,13 +595,14 @@ function spacesInName() {
 // --- Standalone (non-ZIP) fixtures: an OPDS catalog and a loose cover ---
 
 const CATALOG_XML = `<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <title>Fixture Catalog</title>
   <id>urn:uuid:00000000-0000-0000-0000-00000000c001</id>
   <updated>2026-01-01T00:00:00Z</updated>
   <entry>
     <title>Spaces In Name</title>
     <id>urn:uuid:00000000-0000-0000-0000-000000000005</id>
+    <dc:identifier>urn:uuid:00000000-0000-0000-0000-000000000005</dc:identifier>
     <updated>2026-01-01T00:00:00Z</updated>
     <author><name>Fixture Author</name></author>
     <summary>A book whose file name and internal hrefs contain spaces.</summary>
@@ -611,6 +612,7 @@ const CATALOG_XML = `<?xml version="1.0" encoding="utf-8"?>
   <entry>
     <title>Basic LTR</title>
     <id>urn:uuid:00000000-0000-0000-0000-000000000001</id>
+    <dc:identifier>urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>
     <updated>2026-01-01T00:00:00Z</updated>
     <author><name>Fixture Author</name></author>
     <summary>A plain three-chapter book.</summary>
@@ -619,6 +621,7 @@ const CATALOG_XML = `<?xml version="1.0" encoding="utf-8"?>
   <entry>
     <title>Clips Book</title>
     <id>urn:uuid:00000000-0000-0000-0000-000000000003</id>
+    <dc:identifier>urn:uuid:00000000-0000-0000-0000-000000000003</dc:identifier>
     <updated>2026-01-01T00:00:00Z</updated>
     <author><name>Fixture Author</name></author>
     <summary>A scripted book with audio clips.</summary>

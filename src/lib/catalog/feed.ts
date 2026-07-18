@@ -9,6 +9,9 @@ interface CatalogEntry {
   title: string
   author: string
   summary: string
+  /** Publication identifier (dc:identifier), used to detect a book already in
+   *  the library without downloading it. Absent when the feed omits it. */
+  identifier: string | null
   /** Absolute URL, resolved against the feed; never re-encoded. */
   href: string
   /** Absolute cover image URL from the feed's image links, if any. */
@@ -45,7 +48,7 @@ function relsOf(link: FeedLink): string[] {
 }
 
 interface FeedPublication {
-  metadata?: { title?: unknown; author?: unknown }
+  metadata?: { title?: unknown; author?: unknown; identifier?: unknown }
   links?: FeedLink[]
   images?: FeedLink[]
 }
@@ -95,6 +98,7 @@ function normalize(feed: ParsedFeed, url: string): CatalogFeed {
       title: text(publication.metadata?.title),
       author: authorNames(publication.metadata?.author),
       summary: summaryOf(publication.metadata),
+      identifier: text(publication.metadata?.identifier) || null,
       href: resolveHref(acquisition.href, url),
       coverUrl: cover?.href ? resolveHref(cover.href, url) : null,
     })
@@ -106,6 +110,7 @@ function normalize(feed: ParsedFeed, url: string): CatalogFeed {
       title: text(nav.title) || nav.href,
       author: '',
       summary: '',
+      identifier: null,
       href: resolveHref(nav.href, url),
       coverUrl: null,
     })
