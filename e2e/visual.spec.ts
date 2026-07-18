@@ -48,14 +48,45 @@ test('reader: TOC drawer with long, wrapping titles', async ({ page }) => {
   await expect(page).toHaveScreenshot('toc-long-titles.png')
 })
 
-test('catalog: fixture feed loaded', async ({ page }) => {
+// Loads the fixture catalog feed into the library main area, settling
+// everything a stable screenshot depends on: the modal fully closed, the feed
+// entries present, and the cover image actually decoded.
+async function loadFixtureCatalogFeed(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Catalogs' }).click()
-  await page.getByLabel('Add a catalog by URL').fill('http://127.0.0.1:4174/catalog.xml')
-  await page.getByRole('button', { name: 'Open catalog' }).click()
+  await page.getByRole('button', { name: 'Sources' }).click()
+  const drawer = page.getByRole('dialog', { name: 'Sources' })
+  await expect(drawer).toBeVisible()
+  await drawer.getByLabel('Add a catalog by URL').fill('http://127.0.0.1:4174/catalog.xml')
+  await drawer.getByRole('button', { name: 'Add' }).click()
+  await expect(drawer).not.toBeVisible()
   await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
-  await expect(page.locator('img.cover')).toBeVisible()
+  await expect(page.getByText('Spaces In Name')).toBeVisible()
+  await expect
+    .poll(() =>
+      page
+        .locator('img.cover')
+        .first()
+        .evaluate((img) => {
+          const image = img as HTMLImageElement
+          return image.complete && image.naturalWidth > 0
+        }),
+    )
+    .toBe(true)
+}
+
+test('catalog: fixture feed loaded in the main area', async ({ page }) => {
+  await loadFixtureCatalogFeed(page)
   await expect(page).toHaveScreenshot('catalog-feed.png')
+})
+
+test('catalog: sources drawer open', async ({ page }) => {
+  await loadFixtureCatalogFeed(page)
+  // Reopen the drawer so the saved catalog shows (exact name — "Remove
+  // Fixture Catalog" would otherwise also match).
+  await page.getByRole('button', { name: 'Sources' }).click()
+  const drawer = page.getByRole('dialog', { name: 'Sources' })
+  await expect(drawer.getByRole('button', { name: 'Fixture Catalog', exact: true })).toBeVisible()
+  await expect(page).toHaveScreenshot('sources-drawer.png')
 })
 
 test('library: one imported book', async ({ page }) => {
