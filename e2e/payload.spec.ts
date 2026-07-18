@@ -31,7 +31,7 @@ test('a payload boots straight into the book, ignoring query params', async ({ p
   const section = page.frameLocator('iframe')
   await expect(section.getByRole('heading', { name: 'Chapter One' })).toBeVisible()
   // No library, no catalog browser: the payload won.
-  await expect(page.getByRole('heading', { name: 'Open a book' })).not.toBeVisible()
+  await expect(page.getByText('Open a book')).not.toBeVisible()
   await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).not.toBeVisible()
 })
 
@@ -66,7 +66,7 @@ test('embedded position round-trips across reload; the library gains no record',
 
   // Back in the library (via the toolbar), no ghost record exists.
   await page.getByRole('button', { name: 'Library' }).click()
-  await expect(page.getByRole('heading', { name: 'Open a book' })).toBeVisible()
+  await expect(page.getByText('Open a book')).toBeVisible()
   await expect(page.getByRole('listitem')).toHaveCount(0)
 })
 
@@ -97,5 +97,5 @@ test('an undecodable payload shows the unreadable-book error, not a blank page',
   await servePayload(page, 'this is *not* base64###')
   await page.goto('/')
   await expect(page.getByRole('alert')).toContainText('could not be opened')
-  await expect(page.getByRole('heading', { name: 'Open a book' })).toBeVisible()
+  await expect(page.getByText('Open a book')).toBeVisible()
 })

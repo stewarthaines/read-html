@@ -12,9 +12,15 @@
     /** Save the root as a catalog on its first successful load. */
     save: boolean
     storage: Promise<BookStorage>
+    /** Library books keyed by dc:identifier, to detect books already held. */
+    libraryByIdentifier: Map<string, BookRecord>
     onopen: (record: BookRecord) => void
+    /** Called by back() when leaving the root feed (returns to the collection). */
+    onhome: () => void
+    /** Reports the current feed title, for the library's top bar. */
+    ontitle: (title: string) => void
   }
-  let { root, save, storage, onopen }: Props = $props()
+  let { root, save, storage, libraryByIdentifier, onopen, onhome, ontitle }: Props = $props()
 
   let feed = $state<CatalogFeed>()
   let loading = $state(false)
@@ -25,6 +31,10 @@
 
   // §3.4 step 4: downloads are auto-consented when the saved root is trusted.
   const trusted = $derived(savedCatalogs().find((c) => c.url === root)?.trustBooks === true)
+
+  $effect(() => {
+    ontitle(feed?.title || t('Catalog'))
+  })
 
   onMount(() => {
     trail = [root]
@@ -50,9 +60,15 @@
     void load(url)
   }
 
-  function back(): void {
-    trail = trail.slice(0, -1)
-    void load(trail[trail.length - 1])
+  // The library bar's back button; pops a sub-feed, else returns to the
+  // collection. Exposed for that bar via bind:this.
+  export function back(): void {
+    if (trail.length > 1) {
+      trail = trail.slice(0, -1)
+      void load(trail[trail.length - 1])
+    } else {
+      onhome()
+    }
   }
 
   async function download(href: string): Promise<void> {
@@ -67,16 +83,13 @@
       busyHref = ''
     }
   }
+
+  function heldBook(identifier: string | null): BookRecord | undefined {
+    return identifier ? libraryByIdentifier.get(identifier) : undefined
+  }
 </script>
 
 <div class="feed">
-  <header>
-    {#if trail.length > 1}
-      <button class="back" onclick={back} aria-label={t('Back')} title={t('Back')}>←</button>
-    {/if}
-    <h1>{feed?.title || t('Catalog')}</h1>
-  </header>
-
   {#if error}
     <p role="alert">{error}</p>
   {:else if loading && !feed}
@@ -86,6 +99,7 @@
   {#if feed}
     <ul class="entries">
       {#each feed.entries as entry (entry.href)}
+        {@const held = heldBook(entry.identifier)}
         <li>
           {#if entry.coverUrl}
             <img class="cover" src={entry.coverUrl} alt="" />
@@ -97,12 +111,14 @@
             {#if entry.author}<span class="author">{entry.author}</span>{/if}
             {#if entry.summary}<span class="summary">{entry.summary}</span>{/if}
           </div>
-          {#if entry.kind === 'book'}
+          {#if entry.kind === 'feed'}
+            <button onclick={() => browse(entry.href)}>{t('Browse')}</button>
+          {:else if held}
+            <button onclick={() => onopen(held)}>{t('Open')}</button>
+          {:else}
             <button disabled={busyHref === entry.href} onclick={() => download(entry.href)}>
               {busyHref === entry.href ? t('Downloading…') : t('Download')}
             </button>
-          {:else}
-            <button onclick={() => browse(entry.href)}>{t('Browse')}</button>
           {/if}
         </li>
       {/each}
@@ -115,26 +131,6 @@
     inline-size: 100%;
     max-inline-size: 40rem;
     margin-inline: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  header h1 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: normal;
-  }
-
-  .back {
-    font: inherit;
-    min-inline-size: 2rem;
   }
 
   ul {

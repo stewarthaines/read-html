@@ -81,8 +81,10 @@ test('catalog: fixture feed loaded in the main area', async ({ page }) => {
 
 test('catalog: sources drawer open', async ({ page }) => {
   await loadFixtureCatalogFeed(page)
-  // Reopen the drawer so the saved catalog shows (exact name — "Remove
-  // Fixture Catalog" would otherwise also match).
+  // The sources pane opens from the collection, so step back out of the feed
+  // first, then reopen the drawer so the saved catalog shows (exact name —
+  // "Remove Fixture Catalog" would otherwise also match).
+  await page.getByRole('button', { name: 'Back' }).click()
   await page.getByRole('button', { name: 'Sources' }).click()
   const drawer = page.getByRole('dialog', { name: 'Sources' })
   await expect(drawer.getByRole('button', { name: 'Fixture Catalog', exact: true })).toBeVisible()

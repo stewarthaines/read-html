@@ -27,8 +27,19 @@
 
   let settingsDialog: SettingsDialog
   let sourcesDrawer: SourcesDrawer
+  let catalogFeed: CatalogFeed | undefined = $state()
   // undefined = the downloaded collection; otherwise the catalog being browsed.
   let browse = $state<{ root: string; save: boolean }>()
+  // The browsed feed's current title, shown in the bar (like the reader title).
+  let feedTitle = $state('')
+
+  // Library books keyed by dc:identifier, so the feed can offer Open instead
+  // of Download for a book already held.
+  const libraryByIdentifier = $derived(
+    new Map(
+      books.filter((book) => book.identifier).map((book) => [book.identifier as string, book]),
+    ),
+  )
 
   // The deep-linked URL arrives from the parent after this child mounts (child
   // onMount precedes parent onMount), so react to it once when it appears.
@@ -70,10 +81,19 @@
 />
 
 <div class="library">
+  <!-- Contextual bar (mirrors the reader): the collection is home, with the
+       sources menu and a "Library" title; a browsed catalog gets a back
+       button and the catalog's title. -->
   <header class="bar">
-    <button onclick={() => sourcesDrawer.open()} aria-label={t('Sources')} title={t('Sources')}
-      >☰</button
-    >
+    {#if browse}
+      <button onclick={() => catalogFeed?.back()} aria-label={t('Back')} title={t('Back')}>‹</button
+      >
+    {:else}
+      <button onclick={() => sourcesDrawer.open()} aria-label={t('Sources')} title={t('Sources')}
+        >☰</button
+      >
+    {/if}
+    <h1>{browse ? feedTitle : t('Library')}</h1>
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
     >
@@ -82,11 +102,20 @@
   <main>
     {#if browse}
       {#key browse.root}
-        <CatalogFeed root={browse.root} save={browse.save} {storage} {onopen} />
+        <CatalogFeed
+          bind:this={catalogFeed}
+          root={browse.root}
+          save={browse.save}
+          {storage}
+          {libraryByIdentifier}
+          {onopen}
+          onhome={() => (browse = undefined)}
+          ontitle={(value) => (feedTitle = value)}
+        />
       {/key}
     {:else}
       <div class="collection">
-        <h1><label for="book-file">{t('Open a book')}</label></h1>
+        <label class="picklabel" for="book-file">{t('Open a book')}</label>
         <input
           id="book-file"
           type="file"
@@ -137,10 +166,20 @@
   .bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 0.5rem;
     padding: 0.25rem 0.5rem;
     border-block-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  }
+
+  .bar h1 {
+    flex: 1;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: normal;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .bar button {
@@ -164,10 +203,8 @@
     gap: 1rem;
   }
 
-  h1 {
-    margin: 0;
+  .picklabel {
     font-size: 1.25rem;
-    font-weight: normal;
   }
 
   .books {

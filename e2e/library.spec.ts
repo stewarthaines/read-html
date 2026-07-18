@@ -55,7 +55,7 @@ test('deleting a book removes it from the library, surviving reload', async ({ p
   await page.getByRole('button', { name: 'Delete Basic LTR' }).click()
   await expect(page.getByRole('listitem')).toHaveCount(0)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Open a book' })).toBeVisible()
+  await expect(page.getByText('Open a book')).toBeVisible()
   await expect(page.getByRole('listitem')).toHaveCount(0)
 })
 
