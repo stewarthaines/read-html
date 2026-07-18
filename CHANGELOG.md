@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- Books now open on older browsers such as iOS 16 (e.g. iPhone 8), which previously failed with "undefined is not a function" when opening any EPUB.
+
 ## [0.2.0] — 2026-07-17
 
 ### Added
