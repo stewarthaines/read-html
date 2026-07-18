@@ -45,9 +45,20 @@ async function checkShell(browser, url, label) {
   if (title !== 'READ.html')
     throw new Error(`smoke: ${label}: expected title "READ.html", got "${title}"`)
   await page.locator('main').waitFor({ state: 'visible', timeout: 5000 })
+  // The manifest link ships (docs/PWA_MANIFEST.md); the repo provides no
+  // READ.webmanifest, so it dangles here — the shell rendering plus the
+  // no-pageerror check below confirm the dangling link is a silent no-op.
+  const manifestHref = await page
+    .locator('link[rel="manifest"]')
+    .getAttribute('href')
+    .catch(() => null)
+  if (manifestHref !== 'READ.webmanifest')
+    throw new Error(
+      `smoke: ${label}: manifest link href is "${manifestHref}", expected "READ.webmanifest"`,
+    )
   if (errors.length > 0) throw new Error(`smoke: ${label}: page errors:\n${errors.join('\n')}`)
   await page.close()
-  console.log(`smoke OK: ${label} shell renders (${url})`)
+  console.log(`smoke OK: ${label} shell renders, manifest link dangles harmlessly (${url})`)
 }
 
 if (!existsSync(join(distDir, 'index.html')))

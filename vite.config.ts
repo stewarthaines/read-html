@@ -21,10 +21,26 @@ export function readhtmlVersion(): PluginOption {
   }
 }
 
+// Host-provided web-app manifest link (docs/PWA_MANIFEST.md). Injected as a
+// tag rather than placed statically so Vite does not try to resolve or hash
+// the manifest — the repo ships none; the relative href resolves against
+// wherever a host serves the file, and dangles harmlessly when absent.
+export function manifestLink(): PluginOption {
+  return {
+    name: 'readhtml-manifest',
+    transformIndexHtml() {
+      return [
+        { tag: 'link', attrs: { rel: 'manifest', href: 'READ.webmanifest' }, injectTo: 'head' },
+      ]
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     svelte(),
     readhtmlVersion(),
+    manifestLink(),
     ...(mode === 'analyze'
       ? [visualizer({ open: true, filename: 'dist/stats.html', gzipSize: true })]
       : []),
