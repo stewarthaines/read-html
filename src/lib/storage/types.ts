@@ -25,6 +25,10 @@ export interface BookRecord {
    *  used to detect that a catalog offers a newer version of a held book.
    *  Absent when the EPUB declares none or for records from before this field. */
   modified?: string
+  /** The URL these bytes were fetched from — a `?book=` deep link or a catalog
+   *  acquisition link. Absent for books imported from disk or embedded as
+   *  payload, which have no source to point back at. */
+  sourceUrl?: string
   coverThumb: Blob | null
   /** Reading position as an EPUB CFI string; null before first relocate. */
   position: string | null

@@ -25,8 +25,7 @@
     scriptingConsent: boolean | undefined
     /** Filename to save the open book under (the reader's download button). */
     downloadName: string
-    /** The `?book=` URL this copy came from, kept for the editor hand-off.
-     *  Held for the open session only — it is not part of the stored record. */
+    /** The URL this copy was fetched from, for the editor hand-off. */
     sourceUrl?: string
     /** Embedded-payload book: session trust, dedicated position key. */
     embedded?: boolean
@@ -110,7 +109,7 @@
     }
   }
 
-  async function handleOpen(listed: BookRecord, sourceUrl?: string): Promise<void> {
+  async function handleOpen(listed: BookRecord): Promise<void> {
     error = ''
     // Re-read the record: consent may have changed in settings since the
     // library list was loaded.
@@ -130,7 +129,7 @@
       position: record.position,
       scriptingConsent: record.scriptingConsent,
       downloadName: downloadFileName(record),
-      sourceUrl,
+      sourceUrl: record.sourceUrl,
     }
   }
 
@@ -138,7 +137,7 @@
     error = ''
     try {
       const record = await downloadBook(await storage, url, false)
-      await handleOpen(record, url)
+      await handleOpen(record)
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     }

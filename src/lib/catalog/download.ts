@@ -30,9 +30,13 @@ export async function downloadBook(
   )
   const file = new File([blob], name, { type: blob.type || 'application/epub+zip' })
   const record = await importBook(storage, file)
-  if (trusted && record.scriptingConsent === undefined) {
-    await updateBook(record.id, { scriptingConsent: true })
-    return { ...record, scriptingConsent: true }
-  }
-  return record
+  // Record where the bytes came from, so a copy reopened from the library can
+  // still be handed back to its source. A re-download from a different URL
+  // wins: the newest acquisition is the one worth pointing at.
+  const patch: Partial<BookRecord> = {}
+  if (record.sourceUrl !== href) patch.sourceUrl = href
+  if (trusted && record.scriptingConsent === undefined) patch.scriptingConsent = true
+  if (Object.keys(patch).length === 0) return record
+  await updateBook(record.id, patch)
+  return { ...record, ...patch }
 }
