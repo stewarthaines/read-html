@@ -128,10 +128,25 @@ test('a ?book= link keeps its URL and offers the book to the editor', async ({ p
   const edit = page.getByRole('dialog', { name: 'Settings' }).getByRole('link', {
     name: 'Edit in SEED.html',
   })
-  await expect(edit).toHaveAttribute(
-    'href',
-    `https://readitinabook.com/SEED.html?book=${encodeURIComponent(bookUrl)}`,
-  )
+  const editorHref = `https://readitinabook.com/SEED.html?book=${encodeURIComponent(bookUrl)}`
+  await expect(edit).toHaveAttribute('href', editorHref)
+
+  // The source URL is stored on the book, so it survives a library round-trip
+  // and a reload — not just the session that downloaded it.
+  await page
+    .getByRole('dialog', { name: 'Settings' })
+    .getByRole('button', { name: 'Close' })
+    .click()
+  await page.getByRole('button', { name: 'Library' }).click()
+  await page.reload()
+  await page.getByRole('button', { name: /^Basic LTR/ }).click()
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Settings' }).getByRole('link', { name: 'Edit in SEED.html' }),
+  ).toHaveAttribute('href', editorHref)
 })
 
 test('a book opened from disk offers no editor link', async ({ page }) => {

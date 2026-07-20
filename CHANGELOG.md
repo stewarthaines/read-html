@@ -6,7 +6,7 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ### Added
 
-- A book opened by link (`?book=`) offers **Edit in SEED.html** in the reader's settings, opening that book in the editor.
+- A book downloaded from a link or a catalog offers **Edit in SEED.html** in the reader's settings, opening that book in the editor. The link stays with the book in your library.
 
 ### Changed
 
