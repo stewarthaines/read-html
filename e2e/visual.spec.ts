@@ -23,7 +23,7 @@ test('reader: dark theme', async ({ page }) => {
 test('reader: scrolled flow', async ({ page }) => {
   await openFixture(page)
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByRole('combobox', { name: 'Reading mode' }).selectOption('scrolled')
+  await page.getByRole('radio', { name: 'Scroll' }).check()
   await page.getByRole('button', { name: 'Close' }).click()
   await expect(page).toHaveScreenshot('reader-scrolled.png')
 })

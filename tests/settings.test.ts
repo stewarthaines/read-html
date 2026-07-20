@@ -13,27 +13,30 @@ beforeEach(() => {
   reloadSettings()
 })
 
-test('defaults: paginated flow, 100% font size, auto theme', () => {
+test('defaults: paginated flow, auto columns, 100% font size, auto theme', () => {
   expect(settings.flow).toBe('paginated')
+  expect(settings.spread).toBe('auto')
   expect(settings.fontSize).toBe(100)
   expect(settings.theme).toBe('auto')
 })
 
 test('setters persist to localStorage under the readhtml key', () => {
   settings.flow = 'scrolled'
+  settings.spread = 'single'
   settings.fontSize = 130
   settings.theme = 'dark'
   const stored = JSON.parse(localStorage.getItem(LS_SETTINGS) ?? '{}')
-  expect(stored).toEqual({ flow: 'scrolled', fontSize: 130, theme: 'dark' })
+  expect(stored).toEqual({ flow: 'scrolled', spread: 'single', fontSize: 130, theme: 'dark' })
 })
 
 test('reloadSettings picks up stored values', () => {
   localStorage.setItem(
     LS_SETTINGS,
-    JSON.stringify({ flow: 'scrolled', fontSize: 90, theme: 'light' }),
+    JSON.stringify({ flow: 'scrolled', spread: 'single', fontSize: 90, theme: 'light' }),
   )
   reloadSettings()
   expect(settings.flow).toBe('scrolled')
+  expect(settings.spread).toBe('single')
   expect(settings.fontSize).toBe(90)
   expect(settings.theme).toBe('light')
 })
@@ -42,6 +45,7 @@ test('corrupt JSON falls back to defaults', () => {
   localStorage.setItem(LS_SETTINGS, '{not json')
   reloadSettings()
   expect(settings.flow).toBe('paginated')
+  expect(settings.spread).toBe('auto')
   expect(settings.fontSize).toBe(100)
   expect(settings.theme).toBe('auto')
 })
@@ -49,10 +53,11 @@ test('corrupt JSON falls back to defaults', () => {
 test('invalid stored values sanitize to defaults or clamp', () => {
   localStorage.setItem(
     LS_SETTINGS,
-    JSON.stringify({ flow: 'diagonal', fontSize: 9000, theme: 'sepia' }),
+    JSON.stringify({ flow: 'diagonal', spread: 'triple', fontSize: 9000, theme: 'sepia' }),
   )
   reloadSettings()
   expect(settings.flow).toBe('paginated')
+  expect(settings.spread).toBe('auto')
   expect(settings.fontSize).toBe(FONT_SIZE_MAX)
   expect(settings.theme).toBe('auto')
 })

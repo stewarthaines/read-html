@@ -11,6 +11,26 @@ const flowAttribute = (page: Page) =>
     ),
   )
 
+const columnCountAttribute = (page: Page) =>
+  page.evaluate(() =>
+    (document.querySelector('foliate-view') as ViewWithRenderer | null)?.renderer?.getAttribute(
+      'max-column-count',
+    ),
+  )
+
+// How many columns the section actually lays out across its columnized width.
+// The absolute depends on the section's length (it spans several screens), so
+// only the ratio is meaningful: halving it is the single-column layout landing.
+const bookColumnsAcross = (page: Page) =>
+  page
+    .frameLocator('iframe')
+    .locator('html')
+    .evaluate((el) => {
+      const style = getComputedStyle(el)
+      const stride = parseFloat(style.columnWidth) + parseFloat(style.columnGap)
+      return Math.round(el.clientWidth / stride)
+    })
+
 const bookBodyFontSize = async (page: Page) =>
   parseFloat(
     await page
@@ -57,13 +77,48 @@ test('scroll mode switches the flow attribute and persists', async ({ page }) =>
   await openFixture(page)
   expect(await flowAttribute(page)).toBe('paginated')
   const dialog = await openSettings(page)
-  await dialog.getByRole('combobox', { name: 'Reading mode' }).selectOption('scrolled')
+  await dialog.getByRole('radio', { name: 'Scroll' }).check()
   await expect.poll(() => flowAttribute(page)).toBe('scrolled')
   await dialog.getByRole('button', { name: 'Close' }).click()
 
   await page.reload()
   await reopenFromLibrary(page)
   await expect.poll(() => flowAttribute(page)).toBe('scrolled')
+})
+
+test('single columns clamp the paginator to one column, and persist', async ({ page }) => {
+  // A viewport wide enough for two columns, so Auto and Single differ.
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await openFixture(page)
+  const twoUp = await bookColumnsAcross(page)
+  expect(await columnCountAttribute(page)).toBe('2')
+
+  const dialog = await openSettings(page)
+  await dialog.getByRole('radio', { name: 'Single' }).check()
+  await expect.poll(() => columnCountAttribute(page)).toBe('1')
+  // The layout followed, not just the attribute: half as many columns fit.
+  await expect.poll(() => bookColumnsAcross(page)).toBe(twoUp / 2)
+  await dialog.getByRole('button', { name: 'Close' }).click()
+
+  await page.reload()
+  await reopenFromLibrary(page)
+  await expect.poll(() => columnCountAttribute(page)).toBe('1')
+})
+
+test('the column choice is disabled under Scroll but survives the round trip', async ({ page }) => {
+  await openFixture(page)
+  const dialog = await openSettings(page)
+  await dialog.getByRole('radio', { name: 'Single' }).check()
+
+  // Scroll has no columns to choose, so the group greys out — but the choice
+  // is kept, not reset, and applies again on returning to Pages.
+  await dialog.getByRole('radio', { name: 'Scroll' }).check()
+  await expect(dialog.getByRole('radio', { name: 'Single' })).toBeDisabled()
+  await expect(dialog.getByRole('radio', { name: 'Single' })).toBeChecked()
+
+  await dialog.getByRole('radio', { name: 'Pages' }).check()
+  await expect(dialog.getByRole('radio', { name: 'Single' })).toBeEnabled()
+  await expect.poll(() => columnCountAttribute(page)).toBe('1')
 })
 
 test('theme follows prefers-color-scheme by default; manual override persists', async ({
