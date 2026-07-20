@@ -22,6 +22,11 @@
   }
   let { reading }: Props = $props()
 
+  // Columns apply only to pages; the paginator ignores the attribute while
+  // scrolled, so the choice is disabled rather than hidden — it is kept, and
+  // takes effect again on returning to pages.
+  const columnsOff = $derived(settings.flow !== 'paginated')
+
   let dialog: HTMLDialogElement
   // §3.4 step 4: books with a recorded consent grant, revocable here.
   let trusted = $state<BookRecord[]>([])
@@ -47,22 +52,34 @@
 
 <dialog bind:this={dialog} aria-label={t('Settings')} use:backdropClose>
   <form method="dialog">
-    <fieldset>
-      <legend>{t('Reading mode')}</legend>
-      <label><input type="radio" bind:group={settings.flow} value="paginated" /> {t('Pages')}</label
-      >
-      <label><input type="radio" bind:group={settings.flow} value="scrolled" /> {t('Scroll')}</label
-      >
-    </fieldset>
-    <!-- Columns apply only to pages; the paginator ignores the attribute while
-         scrolled, so the choice is disabled rather than hidden — it is kept,
-         and takes effect again on returning to pages. -->
-    <fieldset disabled={settings.flow !== 'paginated'}>
-      <legend>{t('Columns')}</legend>
-      <label><input type="radio" bind:group={settings.spread} value="auto" /> {t('Auto')}</label>
-      <label><input type="radio" bind:group={settings.spread} value="single" /> {t('Single')}</label
-      >
-    </fieldset>
+    <!-- A radiogroup rather than fieldset/legend: a legend is laid out by the
+         UA outside the box's flow, so it cannot sit in the row beside its
+         controls the way every other setting's label does. -->
+    <div class="row" role="radiogroup" aria-labelledby="flow-label">
+      <span id="flow-label">{t('Reading mode')}</span>
+      <span class="choices">
+        <label
+          ><input type="radio" bind:group={settings.flow} value="paginated" /> {t('Pages')}</label
+        >
+        <label
+          ><input type="radio" bind:group={settings.flow} value="scrolled" /> {t('Scroll')}</label
+        >
+      </span>
+    </div>
+    <!-- Without a fieldset to cascade it, each input carries its own disabled. -->
+    <div class="row" class:off={columnsOff} role="radiogroup" aria-labelledby="columns-label">
+      <span id="columns-label">{t('Columns')}</span>
+      <span class="choices">
+        <label
+          ><input type="radio" bind:group={settings.spread} value="auto" disabled={columnsOff} />
+          {t('Auto')}</label
+        >
+        <label
+          ><input type="radio" bind:group={settings.spread} value="single" disabled={columnsOff} />
+          {t('Single')}</label
+        >
+      </span>
+    </div>
     <label>
       {t('Font size')}
       <input
@@ -144,25 +161,27 @@
     gap: 0.75rem;
   }
 
-  fieldset {
-    border: none;
-    margin: 0;
-    padding: 0;
+  /* Same shape as a label row: name at the start, controls at the end. */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
-  fieldset legend {
-    padding: 0;
+  .choices {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  /* Overrides the space-between row above: a radio belongs beside its text. */
-  fieldset label {
-    display: inline-flex;
+  /* Overrides the space-between label row: a radio belongs beside its text. */
+  .choices label {
     justify-content: start;
     gap: 0.25rem;
-    margin-inline-end: 0.75rem;
   }
 
-  fieldset:disabled {
+  .row.off {
     opacity: 0.55;
   }
 
