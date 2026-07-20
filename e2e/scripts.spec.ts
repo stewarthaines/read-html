@@ -136,6 +136,49 @@ test('hostile book: the strip path really strips — no storage write without co
   expect(after).toEqual([null, null])
 })
 
+test("the reader's settings offer only the open book's trust, not the whole list", async ({
+  page,
+}) => {
+  await importScripted(page, CLIPS_BOOK, 'Clips Chapter')
+  await page
+    .getByRole('dialog', { name: 'Interactive features' })
+    .getByRole('button', { name: 'Enable them' })
+    .click()
+  const section = page.frameLocator('iframe')
+  await expect(section.getByRole('heading', { name: 'Clips Chapter' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const settingsDialog = page.getByRole('dialog', { name: 'Settings' })
+  const trust = settingsDialog.getByRole('checkbox', { name: 'Trust this book' })
+  await expect(trust).toBeChecked()
+  // The library's revocable roster stays in the library.
+  await expect(settingsDialog.getByRole('button', { name: 'Revoke' })).toHaveCount(0)
+  await expect(settingsDialog.getByText('Trusted books')).toHaveCount(0)
+
+  // Unchecking re-renders the book stripped; that remount takes the settings
+  // dialog with it, so the reader comes back with no dialog to close.
+  await trust.uncheck()
+  await expect(settingsDialog).not.toBeVisible()
+  await expect(section.getByRole('heading', { name: 'Clips Chapter' })).toBeVisible()
+  await page.waitForTimeout(200)
+  await expect(page.getByRole('dialog', { name: 'Interactive features' })).not.toBeVisible()
+  await section.getByText('Play the first clip').click()
+  await page.waitForTimeout(400)
+  expect(await audioState(page)).toEqual({ paused: true, currentTime: 0 })
+})
+
+test('a book with no scripts offers no trust checkbox in the reader', async ({ page }) => {
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/basic-ltr.epub')
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const settingsDialog = page.getByRole('dialog', { name: 'Settings' })
+  await expect(settingsDialog.getByRole('combobox', { name: 'Theme' })).toBeVisible()
+  await expect(settingsDialog.getByRole('checkbox', { name: 'Trust this book' })).toHaveCount(0)
+})
+
 test('revoking in settings returns the book to stripped without re-asking', async ({ page }) => {
   await importScripted(page, CLIPS_BOOK, 'Clips Chapter')
   await page

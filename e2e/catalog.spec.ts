@@ -117,6 +117,35 @@ test('?book= deep link fetches and opens an EPUB, %20 included', async ({ page }
   await expect(page.getByRole('listitem').filter({ hasText: 'Spaces In Name' })).toBeVisible()
 })
 
+test('a ?book= link keeps its URL and offers the book to the editor', async ({ page }) => {
+  const bookUrl = `${FIXTURES}/basic-ltr.epub`
+  await page.goto(`/?book=${encodeURIComponent(bookUrl)}`)
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const edit = page.getByRole('dialog', { name: 'Settings' }).getByRole('link', {
+    name: 'Edit in SEED.html',
+  })
+  await expect(edit).toHaveAttribute(
+    'href',
+    `https://readitinabook.com/SEED.html?book=${encodeURIComponent(bookUrl)}`,
+  )
+})
+
+test('a book opened from disk offers no editor link', async ({ page }) => {
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/basic-ltr.epub')
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Settings' }).getByRole('link', { name: 'Edit in SEED.html' }),
+  ).toHaveCount(0)
+})
+
 test('drag-and-drop imports a book on the library', async ({ page }) => {
   await page.goto('/')
   const response = await page.request.get(`${FIXTURES}/basic-ltr.epub`)
