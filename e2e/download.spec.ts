@@ -22,10 +22,15 @@ test('downloads a library book with its original filename, byte-identical', asyn
 test('the reader downloads the open book, byte-identical to the picker file', async ({ page }) => {
   await openFixture(page)
 
+  // The reader's download lives in the settings dialog, paired with the
+  // editor entry above Close — no longer in the toolbar.
+  await expect(page.getByRole('button', { name: 'Download' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Settings' }).click()
   const downloadPromise = page.waitForEvent('download')
-  // The reader toolbar's download button (left of settings), same icon as the
-  // library card's.
-  await page.getByRole('button', { name: 'Download' }).click()
+  await page
+    .getByRole('dialog', { name: 'Settings' })
+    .getByRole('button', { name: 'Download' })
+    .click()
   const download = await downloadPromise
 
   expect(download.suggestedFilename()).toBe('basic-ltr.epub')

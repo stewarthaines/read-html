@@ -157,7 +157,9 @@ test("the reader's settings offer only the open book's trust, not the whole list
 
   // Unchecking re-renders the book stripped; that remount takes the settings
   // dialog with it, so the reader comes back with no dialog to close.
-  await trust.uncheck()
+  // click(), not uncheck(): uncheck() verifies the box's resulting state, but
+  // the remount destroys the box itself — the assertion races the teardown.
+  await trust.click()
   await expect(settingsDialog).not.toBeVisible()
   await expect(section.getByRole('heading', { name: 'Clips Chapter' })).toBeVisible()
   await page.waitForTimeout(200)
