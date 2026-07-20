@@ -10,6 +10,7 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ### Changed
 
+- The reader's **Download** moves from the toolbar into its settings, paired with **Edit in SEED.html** above Close.
 - The reader's settings show a trust checkbox for the book you're reading; the full list of trusted books stays in the library's settings.
 - Reading mode is now a pair of choices: **Pages** or **Scroll**, and under Pages, **Auto** or **Single** columns. Auto fits two pages side by side where there's room; Single keeps one at any width.
 
