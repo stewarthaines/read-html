@@ -4,7 +4,21 @@
   import { listBooks, updateBook } from '../storage/metadata'
   import type { BookRecord } from '../storage/types'
   import { backdropClose } from '../ui/backdrop.svelte'
+  import { editorUrl } from '../editor'
   import { FONT_SIZE_MAX, FONT_SIZE_MIN, settings } from './index.svelte'
+
+  interface Props {
+    /** Reader context. Present only while a book is open: its own trust
+     *  toggle stands in for the library's whole trusted-books list. */
+    reading?: {
+      /** Absent when the open book's consent is not editable — it has no
+       *  scripts to trust, or it is an embedded copy trusted for the session. */
+      trust?: { consent: boolean; ontoggle: (granted: boolean) => void }
+      /** The URL this book was fetched from (`?book=`), if any. */
+      sourceUrl?: string | null
+    }
+  }
+  let { reading }: Props = $props()
 
   let dialog: HTMLDialogElement
   // §3.4 step 4: books with a recorded consent grant, revocable here.
@@ -12,7 +26,7 @@
 
   export function open(): void {
     dialog.showModal()
-    void refreshTrusted()
+    if (!reading) void refreshTrusted()
   }
 
   export function isOpen(): boolean {
@@ -57,7 +71,24 @@
         <option value="dark">{t('Dark')}</option>
       </select>
     </label>
-    {#if trusted.length > 0}
+    {#if reading?.trust}
+      <label>
+        {t('Trust this book')}
+        <input
+          type="checkbox"
+          checked={reading.trust.consent}
+          onchange={(event) => reading?.trust?.ontoggle(event.currentTarget.checked)}
+        />
+      </label>
+    {/if}
+    {#if reading?.sourceUrl}
+      <p class="edit">
+        <a href={editorUrl(reading.sourceUrl)} target="_blank" rel="noopener"
+          >{t('Edit in SEED.html')}</a
+        >
+      </p>
+    {/if}
+    {#if !reading && trusted.length > 0}
       <section aria-label={t('Trusted books')}>
         <h2>{t('Trusted books')}</h2>
         <p>{t('These books may run their interactive features.')}</p>
@@ -125,6 +156,11 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding-block: 0.25rem;
+  }
+
+  .edit {
+    margin: 0;
+    font-size: 0.85rem;
   }
 
   .about {

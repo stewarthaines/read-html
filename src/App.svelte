@@ -25,6 +25,9 @@
     scriptingConsent: boolean | undefined
     /** Filename to save the open book under (the reader's download button). */
     downloadName: string
+    /** The `?book=` URL this copy came from, kept for the editor hand-off.
+     *  Held for the open session only — it is not part of the stored record. */
+    sourceUrl?: string
     /** Embedded-payload book: session trust, dedicated position key. */
     embedded?: boolean
   }
@@ -107,7 +110,7 @@
     }
   }
 
-  async function handleOpen(listed: BookRecord): Promise<void> {
+  async function handleOpen(listed: BookRecord, sourceUrl?: string): Promise<void> {
     error = ''
     // Re-read the record: consent may have changed in settings since the
     // library list was loaded.
@@ -127,6 +130,7 @@
       position: record.position,
       scriptingConsent: record.scriptingConsent,
       downloadName: downloadFileName(record),
+      sourceUrl,
     }
   }
 
@@ -134,7 +138,7 @@
     error = ''
     try {
       const record = await downloadBook(await storage, url, false)
-      await handleOpen(record)
+      await handleOpen(record, url)
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     }
@@ -203,22 +207,23 @@
     writePayloadPosition(id, cfi)
   }, 500)
 
-  // §3.4: both answers persist to the book's record. A grant re-renders the
-  // book with scripts at the current position (replacing `current` remounts
-  // the keyed reader); a denial changes nothing visible — it is already
-  // rendered stripped.
+  // §3.4: both answers persist to the book's record. The book re-renders at
+  // the current position (replacing `current` remounts the keyed reader) only
+  // when the answer contradicts how it is rendered right now — granting to a
+  // stripped render, or revoking one already running its scripts. Denying the
+  // first-time prompt changes nothing visible; it is already stripped.
   async function handleConsent(granted: boolean): Promise<void> {
     if (!current) return
     await updateBook(current.id, { scriptingConsent: granted })
-    if (granted) {
+    if (granted !== (current.scriptingConsent === true)) {
       persistPosition.flush()
       current = {
         ...current,
         position: lastCfi ?? current.position,
-        scriptingConsent: true,
+        scriptingConsent: granted,
       }
     } else {
-      current.scriptingConsent = false
+      current.scriptingConsent = granted
     }
   }
 
@@ -238,6 +243,8 @@
       file={current.file}
       initialPosition={current.position}
       scriptingConsent={current.scriptingConsent}
+      sourceUrl={current.sourceUrl}
+      trustEditable={!current.embedded}
       onrelocate={handleRelocate}
       onconsent={handleConsent}
       ondownload={handleReaderDownload}

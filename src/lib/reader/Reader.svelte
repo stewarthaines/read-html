@@ -13,6 +13,10 @@
     initialPosition?: string | null
     /** Recorded scripting consent from the book's metadata record (§3.4). */
     scriptingConsent?: boolean | undefined
+    /** The URL this book was fetched from (`?book=`), offered to the editor. */
+    sourceUrl?: string | null
+    /** False for an embedded copy, whose session trust is not a stored answer. */
+    trustEditable?: boolean
     onrelocate: (location: { cfi: string; fraction: number }) => void
     onconsent: (granted: boolean) => void
     ondownload: () => void
@@ -22,6 +26,8 @@
     file,
     initialPosition = null,
     scriptingConsent = undefined,
+    sourceUrl = null,
+    trustEditable = true,
     onrelocate,
     onconsent,
     ondownload,
@@ -34,6 +40,8 @@
   let settingsDialog: SettingsDialog
   let view = $state<FoliateViewElement>()
   let error = $state('')
+  // Only a scripted book has anything to trust, so only it gets the toggle.
+  let scripted = $state(false)
 
   // Reading-comfort settings apply live (§3.5): flow via the renderer's
   // observed attribute, font size and theme via injected section CSS.
@@ -70,7 +78,8 @@
         disposed = opened
         // §3.4 step 3: a scripted book with no recorded answer renders
         // stripped (that already happened) and asks once.
-        if (decideScripting(bookIsScripted(opened.book), scriptingConsent) === 'ask') {
+        scripted = bookIsScripted(opened.book)
+        if (decideScripting(scripted, scriptingConsent) === 'ask') {
           consentDialog.showModal()
         }
       })
@@ -178,7 +187,16 @@
   </main>
 </div>
 
-<SettingsDialog bind:this={settingsDialog} />
+<SettingsDialog
+  bind:this={settingsDialog}
+  reading={{
+    trust:
+      scripted && trustEditable
+        ? { consent: scriptingConsent === true, ontoggle: onconsent }
+        : undefined,
+    sourceUrl,
+  }}
+/>
 
 <!-- §3.4 one-time consent prompt. Enable and Keep-off both persist via
      onconsent; dismissing (Esc) records nothing and re-asks next open. -->
