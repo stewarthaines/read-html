@@ -2,6 +2,16 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- A book opened by link (`?book=`) offers **Edit in SEED.html** in the reader's settings, opening that book in the editor.
+
+### Changed
+
+- The reader's settings show a trust checkbox for the book you're reading; the full list of trusted books stays in the library's settings.
+
 ## [0.4.0] — 2026-07-18
 
 ### Added
