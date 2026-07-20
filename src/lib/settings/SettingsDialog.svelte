@@ -45,13 +45,22 @@
 
 <dialog bind:this={dialog} aria-label={t('Settings')} use:backdropClose>
   <form method="dialog">
-    <label>
-      {t('Reading mode')}
-      <select bind:value={settings.flow}>
-        <option value="paginated">{t('Pages')}</option>
-        <option value="scrolled">{t('Scroll')}</option>
-      </select>
-    </label>
+    <fieldset>
+      <legend>{t('Reading mode')}</legend>
+      <label><input type="radio" bind:group={settings.flow} value="paginated" /> {t('Pages')}</label
+      >
+      <label><input type="radio" bind:group={settings.flow} value="scrolled" /> {t('Scroll')}</label
+      >
+    </fieldset>
+    <!-- Columns apply only to pages; the paginator ignores the attribute while
+         scrolled, so the choice is disabled rather than hidden — it is kept,
+         and takes effect again on returning to pages. -->
+    <fieldset disabled={settings.flow !== 'paginated'}>
+      <legend>{t('Columns')}</legend>
+      <label><input type="radio" bind:group={settings.spread} value="auto" /> {t('Auto')}</label>
+      <label><input type="radio" bind:group={settings.spread} value="single" /> {t('Single')}</label
+      >
+    </fieldset>
     <label>
       {t('Font size')}
       <input
@@ -125,6 +134,28 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+  }
+
+  fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  fieldset legend {
+    padding: 0;
+  }
+
+  /* Overrides the space-between row above: a radio belongs beside its text. */
+  fieldset label {
+    display: inline-flex;
+    justify-content: start;
+    gap: 0.25rem;
+    margin-inline-end: 0.75rem;
+  }
+
+  fieldset:disabled {
+    opacity: 0.55;
   }
 
   button {

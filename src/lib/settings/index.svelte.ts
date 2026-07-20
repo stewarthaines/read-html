@@ -4,10 +4,15 @@
 import { LS_SETTINGS } from '../storage/keys'
 
 export type Flow = 'paginated' | 'scrolled'
+// Column count while paginated: 'auto' lets the paginator fit up to two
+// columns to the viewport, 'single' clamps it to one at any width. Orthogonal
+// to flow — the choice is kept while scrolled, and applies again on return.
+export type Spread = 'auto' | 'single'
 export type Theme = 'auto' | 'light' | 'dark'
 
 export interface Settings {
   flow: Flow
+  spread: Spread
   fontSize: number
   theme: Theme
 }
@@ -15,7 +20,7 @@ export interface Settings {
 export const FONT_SIZE_MIN = 70
 export const FONT_SIZE_MAX = 150
 
-const DEFAULTS: Settings = { flow: 'paginated', fontSize: 100, theme: 'auto' }
+const DEFAULTS: Settings = { flow: 'paginated', spread: 'auto', fontSize: 100, theme: 'auto' }
 
 function clampFontSize(value: unknown): number {
   const size = Number(value)
@@ -29,6 +34,7 @@ function sanitize(value: unknown): Settings {
   >
   return {
     flow: raw.flow === 'scrolled' ? 'scrolled' : DEFAULTS.flow,
+    spread: raw.spread === 'single' ? 'single' : DEFAULTS.spread,
     fontSize: clampFontSize(raw.fontSize ?? DEFAULTS.fontSize),
     theme: raw.theme === 'light' || raw.theme === 'dark' ? raw.theme : DEFAULTS.theme,
   }
@@ -59,6 +65,13 @@ export const settings = {
   },
   set flow(value: Flow) {
     state.flow = value
+    save(state)
+  },
+  get spread() {
+    return state.spread
+  },
+  set spread(value: Spread) {
+    state.spread = value
     save(state)
   },
   get fontSize() {

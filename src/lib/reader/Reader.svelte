@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
-  import { settings } from '../settings/index.svelte'
+  import { settings, type Spread } from '../settings/index.svelte'
   import { bookContentCss } from '../theme/book'
   import { decideScripting } from '../scripting/consent'
   import { backdropClose } from '../ui/backdrop.svelte'
@@ -48,9 +48,28 @@
   $effect(() => {
     view?.renderer.setAttribute('flow', settings.flow)
   })
+  // The paginator fits up to max-column-count columns to the viewport; 1
+  // clamps it to a single column at any width. Ignored while scrolled.
+  // Changing it resizes nothing, so the paginator's ResizeObserver never fires
+  // — re-render explicitly, or the new count waits for the next resize. The
+  // opening value is applied in openBook, so this only fires on a real change
+  // and never re-renders a view that has not painted yet.
+  $effect(() => {
+    const renderer = view?.renderer
+    if (!renderer) return
+    const value = columnCap(settings.spread)
+    if (renderer.getAttribute('max-column-count') === value) return
+    renderer.setAttribute('max-column-count', value)
+    renderer.render?.()
+  })
   $effect(() => {
     view?.renderer.setStyles?.(bookContentCss(settings))
   })
+
+  // 2 is the paginator's own default cap: up to two columns where they fit.
+  function columnCap(spread: Spread): string {
+    return spread === 'single' ? '1' : '2'
+  }
 
   const toc = $derived(view?.book.toc ?? [])
   const title = $derived.by(() => {
@@ -68,6 +87,7 @@
       container,
       lastLocation: initialPosition,
       flow: settings.flow,
+      maxColumnCount: columnCap(settings.spread),
       styles: bookContentCss(settings),
       allowScripts: scriptingConsent === true,
       onSectionLoad: handleSectionLoad,

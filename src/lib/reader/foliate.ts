@@ -58,7 +58,11 @@ export interface FoliateViewElement extends HTMLElement {
   lastLocation?: Relocation
   /** The paginator (or fixed-layout) element; supports the `flow` attribute
    *  and per-section user-style injection. */
-  renderer: HTMLElement & { setStyles?: (css: string) => void }
+  // render() re-runs the paginator's layout. Attributes that resize the
+  // element re-render via its ResizeObserver; ones that only change a CSS
+  // custom property (max-column-count) need this called explicitly, exactly
+  // as the paginator does internally for max-inline-size.
+  renderer: HTMLElement & { setStyles?: (css: string) => void; render?: () => void }
   open(book: FoliateBook): Promise<void>
   init(options: { lastLocation?: string; showTextStart?: boolean }): Promise<void>
   goTo(target: string | number): Promise<unknown>
@@ -194,6 +198,9 @@ export interface OpenBookOptions {
   lastLocation?: string | null
   /** Initial renderer flow ('paginated' | 'scrolled'), applied before first render. */
   flow?: string
+  /** Initial paginator column cap ('1' forces a single column), applied
+   *  before first render. */
+  maxColumnCount?: string
   /** Initial user-settings CSS injected into sections, applied before first render. */
   styles?: string
   /**
@@ -221,6 +228,7 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
   // Between open (renderer exists) and init (first section renders): settings
   // applied here take effect from the first paint, with no flash or reflow.
   if (options.flow) view.renderer.setAttribute('flow', options.flow)
+  if (options.maxColumnCount) view.renderer.setAttribute('max-column-count', options.maxColumnCount)
   if (options.styles) view.renderer.setStyles?.(options.styles)
   await view.init({ lastLocation: options.lastLocation ?? undefined })
   return view
