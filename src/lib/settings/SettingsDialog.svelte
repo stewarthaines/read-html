@@ -16,6 +16,8 @@
       trust?: { consent: boolean; ontoggle: (granted: boolean) => void }
       /** The URL this book was fetched from (`?book=`), if any. */
       sourceUrl?: string | null
+      /** Saves the open book's bytes to disk. */
+      ondownload: () => void
     }
   }
   let { reading }: Props = $props()
@@ -90,13 +92,6 @@
         />
       </label>
     {/if}
-    {#if reading?.sourceUrl}
-      <p class="edit">
-        <a href={editorUrl(reading.sourceUrl)} target="_blank" rel="noopener"
-          >{t('Edit in SEED.html')}</a
-        >
-      </p>
-    {/if}
     {#if !reading && trusted.length > 0}
       <section aria-label={t('Trusted books')}>
         <h2>{t('Trusted books')}</h2>
@@ -110,6 +105,19 @@
           {/each}
         </ul>
       </section>
+    {/if}
+    <!-- Book actions, paired above Close. The editor entry stays an anchor —
+         it is a navigation to another app, so it keeps its href, middle-click
+         and open-in-new-tab; only its appearance is a button. -->
+    {#if reading}
+      <div class="actions">
+        {#if reading.sourceUrl}
+          <a class="action" href={editorUrl(reading.sourceUrl)} target="_blank" rel="noopener"
+            >{t('Edit in SEED.html')}</a
+          >
+        {/if}
+        <button type="button" class="action" onclick={reading.ondownload}>{t('Download')}</button>
+      </div>
     {/if}
     <button>{t('Close')}</button>
     <!-- §3.8 about panel: the name, one plain sentence, the license, the
@@ -189,9 +197,24 @@
     padding-block: 0.25rem;
   }
 
-  .edit {
-    margin: 0;
-    font-size: 0.85rem;
+  .actions {
+    display: flex;
+    justify-content: end;
+    gap: 0.5rem;
+  }
+
+  /* The anchor is styled to match its sibling button, not turned into one. */
+  a.action {
+    display: inline-block;
+    border: 1px solid color-mix(in srgb, CanvasText 35%, Canvas);
+    padding: 0.15rem 0.6rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button.action {
+    font: inherit;
+    align-self: auto;
   }
 
   .about {

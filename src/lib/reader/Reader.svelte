@@ -188,7 +188,6 @@
       >☰</button
     >
     <h1>{title}</h1>
-    <button onclick={ondownload} aria-label={t('Download')} title={t('Download')}>⤓</button>
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
     >
@@ -215,6 +214,7 @@
         ? { consent: scriptingConsent === true, ontoggle: onconsent }
         : undefined,
     sourceUrl,
+    ondownload,
   }}
 />
 
