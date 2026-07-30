@@ -1129,11 +1129,17 @@ export class Paginator extends HTMLElement {
         } else $style.textContent = styles
 
         // NOTE: needs `requestAnimationFrame` in Chromium
-        requestAnimationFrame(() =>
-            this.#background.style.background = getBackground(this.#view.document))
+        // READ.html patch: guard — the rAF callback can fire after destroy()
+        // nulled #view (the host Window outlives the view).
+        requestAnimationFrame(() => {
+            if (this.#view) this.#background.style.background = getBackground(this.#view.document)
+        })
 
         // needed because the resize observer doesn't work in Firefox
-        this.#view?.document?.fonts?.ready?.then(() => this.#view.expand())
+        // READ.html patch: guard the fonts.ready continuation too — it
+        // resolves after destroy() when the view is torn down while the
+        // section's fonts are still loading.
+        this.#view?.document?.fonts?.ready?.then(() => this.#view?.expand())
     }
     focusView() {
         this.#view.document.defaultView.focus()
