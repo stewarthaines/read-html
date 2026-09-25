@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- Where the reader is hosted alongside a service worker that serves the book (as at readitinabook.com), an interactive book you have trusted can load its own media at runtime: a widget that builds a video player when clicked now plays. Copies opened from disk are unchanged.
+
 ## [0.5.0] — 2026-07-20
 
 ### Added

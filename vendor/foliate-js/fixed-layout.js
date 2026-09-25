@@ -91,7 +91,11 @@ export class FixedLayout extends HTMLElement {
         // READ.html patch: srcdoc instead of navigating to the blob: URL, so
         // fixed-layout books open from disk in Chrome too. See paginator.js
         // and VENDORED.md #6.
-        const srcdoc = src.startsWith('blob:')
+        // READ.html patch: a section the host serves over http navigates to
+        // its served URL instead, so the document has a real address.
+        // VENDORED.md #8.
+        const served = this.book?.sections?.[index]?.servedURL
+        const srcdoc = !served && src.startsWith('blob:')
             ? await fetch(src).then(r => r.text()).catch(() => null)
             : null
         return new Promise(resolve => {
@@ -107,7 +111,7 @@ export class FixedLayout extends HTMLElement {
                 })
             }, { once: true })
             if (srcdoc != null) iframe.srcdoc = srcdoc
-            else iframe.src = src
+            else iframe.src = served ?? src
         })
     }
     #render(side = this.#side) {

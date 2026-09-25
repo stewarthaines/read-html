@@ -240,6 +240,7 @@
   {#key current}
     <Reader
       file={current.file}
+      bookId={current.id}
       initialPosition={current.position}
       scriptingConsent={current.scriptingConsent}
       sourceUrl={current.sourceUrl}

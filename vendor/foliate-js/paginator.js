@@ -1005,7 +1005,10 @@ export class Paginator extends HTMLElement {
                 onLoad?.({ doc, index })
             }
             const beforeRender = this.#beforeRender.bind(this)
-            await view.load(src, afterLoad, beforeRender)
+            // READ.html patch: a section the host serves over http navigates
+            // to its served URL, so the document has a real address; the
+            // blob: URL still holds the same markup. VENDORED.md #8.
+            await view.load(this.sections[index]?.servedURL ?? src, afterLoad, beforeRender)
             this.dispatchEvent(new CustomEvent('create-overlayer', {
                 detail: {
                     doc: view.document, index,

@@ -4,6 +4,7 @@
 // points are guarded by scripts/vendor-check.mjs).
 import { makeBook } from '../../../vendor/foliate-js/view.js'
 import { STRIPPABLE_TYPES, stripScripts } from '../scripting/strip'
+import { isBookServingAvailable, servedSectionUrl, startBookServer } from './book-server'
 
 export interface TocItem {
   label: string
@@ -23,7 +24,8 @@ interface FoliateBook {
   dir?: string
   transformTarget: EventTarget
   getCover?: () => Promise<Blob | null>
-  sections?: { id: string }[]
+  /** `servedURL` is set by the reader where the book is served (vendored patch 8). */
+  sections?: { id: string; servedURL?: string }[]
   resources?: {
     spine?: { properties?: string[] }[]
     manifest?: ManifestItem[]
@@ -83,21 +85,26 @@ interface LoaderDataDetail {
 // Both markup transforms run in the Loader's 'data' hook, before the
 // resource's blob: URL is created — nothing a book script can observe ever
 // carries the untransformed markup. Stripping (§3.4, non-consented) and the
-// clip data-src rewrite (§8, consented) are mutually exclusive.
+// clip data-src rewrite (§8, consented) are mutually exclusive. Where the
+// book is served (book-server.ts) the result is also kept by section href:
+// it is what the served URL answers when the section's frame navigates there.
 function attachMarkupTransform(
   book: FoliateBook,
   allowScripts: boolean,
   clipUrlCache: Map<string, string>,
+  sectionMarkup: Map<string, string> | null,
 ): void {
   book.transformTarget.addEventListener('data', (event) => {
     const detail = (event as CustomEvent<LoaderDataDetail>).detail
     if (!STRIPPABLE_TYPES.includes(detail.type)) return
     const sectionHref = detail.name ?? ''
-    detail.data = Promise.resolve(detail.data).then((data) => {
+    detail.data = Promise.resolve(detail.data).then(async (data) => {
       if (typeof data !== 'string') return data
-      return allowScripts
-        ? rewriteClipMarkup(book, data, detail.type, sectionHref, clipUrlCache)
+      const markup = allowScripts
+        ? await rewriteClipMarkup(book, data, detail.type, sectionHref, clipUrlCache)
         : stripScripts(data, detail.type)
+      sectionMarkup?.set(sectionHref, markup)
+      return markup
     })
   })
 }
@@ -208,14 +215,36 @@ export interface OpenBookOptions {
    * grant. Skips script-stripping and enables the §8 data-src rewrite.
    */
   allowScripts?: boolean
+  /**
+   * The id the book is served under while open (docs/SERVED_BOOK.md), where
+   * a worker controls the page. Omit and nothing is served.
+   */
+  bookId?: string
   onSectionLoad: (doc: Document) => void
   onRelocate: (location: Relocation) => void
 }
 
 export async function openBook(options: OpenBookOptions): Promise<FoliateViewElement> {
   const book = (await makeBook(options.file)) as FoliateBook
-  attachMarkupTransform(book, options.allowScripts === true, new Map())
+  const allowScripts = options.allowScripts === true
+  const served = options.bookId !== undefined && isBookServingAvailable() ? options.bookId : null
+  const sectionMarkup = served === null ? null : new Map<string, string>()
+  attachMarkupTransform(book, allowScripts, new Map(), sectionMarkup)
+  // Serving starts before the first section renders, since the section's
+  // own frame is the first to ask; it stops with the view.
+  let stopServing = () => {}
+  if (served !== null && sectionMarkup) {
+    for (const section of book.sections ?? []) {
+      section.servedURL = servedSectionUrl(served, section.id)
+    }
+    stopServing = startBookServer(served, book, allowScripts, sectionMarkup)
+  }
   const view = document.createElement('foliate-view') as FoliateViewElement
+  const close = view.close.bind(view)
+  view.close = () => {
+    stopServing()
+    close()
+  }
   view.addEventListener('load', (event) => {
     options.onSectionLoad((event as CustomEvent<SectionLoadDetail>).detail.doc)
   })

@@ -10,6 +10,8 @@
 
   interface Props {
     file: Blob
+    /** The book's library id, which it is served under while open (docs/SERVED_BOOK.md). */
+    bookId: string
     initialPosition?: string | null
     /** Recorded scripting consent from the book's metadata record (§3.4). */
     scriptingConsent?: boolean | undefined
@@ -24,6 +26,7 @@
   }
   let {
     file,
+    bookId,
     initialPosition = null,
     scriptingConsent = undefined,
     sourceUrl = null,
@@ -84,6 +87,7 @@
     let disposed: FoliateViewElement | undefined
     openBook({
       file,
+      bookId,
       container,
       lastLocation: initialPosition,
       flow: settings.flow,

@@ -21,7 +21,7 @@ READ.html fetches catalogs and books directly from your host — **there is no p
 
 ## Interactive books
 
-Books can declare scripted content (`properties="scripted"`). Scripts are **stripped by default** — a scripted book must degrade to fully readable text without them (that is the publisher contract in `docs/CONTENT_CONVENTIONS.md`). On first open the reader is asked once whether to enable a book's interactive features; the answer is per book, revocable in settings, and a saved catalog can be marked trusted to skip the question for its books. Consented scripts run with the reading origin's authority — the threat model is stated in `docs/SPEC.md`.
+Books can declare scripted content (`properties="scripted"`). Scripts are **stripped by default** — a scripted book must degrade to fully readable text without them (that is the publisher contract in `docs/CONTENT_CONVENTIONS.md`). On first open the reader is asked once whether to enable a book's interactive features; the answer is per book, revocable in settings, and a saved catalog can be marked trusted to skip the question for its books. Consented scripts run with the reading origin's authority — the threat model is stated in `docs/SPEC.md`. Where the host serves the reader alongside a service worker that answers the book route (as at readitinabook.com), a consented book's scripts can also load the book's own files by relative URL at runtime; the contract is `docs/SERVED_BOOK.md`.
 
 ## Storage caveats
 

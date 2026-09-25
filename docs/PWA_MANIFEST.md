@@ -24,7 +24,7 @@ The built `READ.html` (both targets) carries exactly one manifest link in `<head
 ## What hosts will do with it (informative, not this repo's code)
 
 - **SEED.html's origin** serves a manifest scoped to the reader's own page — `"start_url": "/READ.html"`, `"scope": "/READ.html"`, `"display": "standalone"`, name `READ.html` — nested inside the editor's root-scope PWA (Chromium supports nested scopes; `?book=`/`?catalog=` links stay in scope). Icons as `data:` URIs keep it a single extra file.
-- **A future dedicated origin** (e.g. read.readitinabook.com) serves a root-scope manifest and can add its own service worker for offline; out of scope here.
+- **A future dedicated origin** (e.g. read.readitinabook.com) serves a root-scope manifest and can add its own service worker for offline, which would also carry the served-book route of [SERVED_BOOK.md](./SERVED_BOOK.md); out of scope here.
 
 ## Notes
 
