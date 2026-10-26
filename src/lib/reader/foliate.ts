@@ -3,6 +3,7 @@
 // uses (the engine is untyped JS; changes to the two load-path integration
 // points are guarded by scripts/vendor-check.mjs).
 import { makeBook } from '../../../vendor/foliate-js/view.js'
+import { rewriteDataSrcMarkup } from '../scripting/data-src'
 import { STRIPPABLE_TYPES, stripScripts } from '../scripting/strip'
 import { isBookServingAvailable, servedSectionUrl, startBookServer } from './book-server'
 
@@ -85,13 +86,13 @@ interface LoaderDataDetail {
 // Both markup transforms run in the Loader's 'data' hook, before the
 // resource's blob: URL is created — nothing a book script can observe ever
 // carries the untransformed markup. Stripping (§3.4, non-consented) and the
-// clip data-src rewrite (§8, consented) are mutually exclusive. Where the
+// data-src rewrite (§8, consented) are mutually exclusive. Where the
 // book is served (book-server.ts) the result is also kept by section href:
 // it is what the served URL answers when the section's frame navigates there.
 function attachMarkupTransform(
   book: FoliateBook,
   allowScripts: boolean,
-  clipUrlCache: Map<string, string>,
+  dataSrcUrlCache: Map<string, string>,
   sectionMarkup: Map<string, string> | null,
 ): void {
   book.transformTarget.addEventListener('data', (event) => {
@@ -101,7 +102,7 @@ function attachMarkupTransform(
     detail.data = Promise.resolve(detail.data).then(async (data) => {
       if (typeof data !== 'string') return data
       const markup = allowScripts
-        ? await rewriteClipMarkup(book, data, detail.type, sectionHref, clipUrlCache)
+        ? await rewriteDataSrc(book, data, detail.type, sectionHref, dataSrcUrlCache)
         : stripScripts(data, detail.type)
       sectionMarkup?.set(sectionHref, markup)
       return markup
@@ -148,54 +149,26 @@ export async function readBookInfo(file: Blob): Promise<BookInfo> {
   }
 }
 
-// §8: foliate rewrites only `src` attributes, so for consented books the
-// reader rewrites each clip span's `data-src` to a blob: URL for the same
-// bytes (loaded from the book itself); the book's player sees a URL scheme
-// and passes it through untouched. This runs in the pre-blob markup
-// transform because real players read data-src eagerly at script startup —
-// rewriting any later races the book's own code (found with a real book).
-const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:/i
-
-function resolveBookHref(href: string, baseHref: string): string {
-  const url = new URL(href, `http://readhtml.invalid/${baseHref}`)
-  return decodeURI(url.pathname).slice(1)
-}
-
-async function rewriteClipMarkup(
+// §8: each consented section's book-file `data-src` values become blob: URLs
+// (src/lib/scripting/data-src.ts); this supplies the bytes from the book
+// itself, one URL per file for the book's lifetime.
+function rewriteDataSrc(
   book: FoliateBook,
   markup: string,
   mediaType: string,
   sectionHref: string,
   urlCache: Map<string, string>,
 ): Promise<string> {
-  if (mediaType === 'image/svg+xml') return markup
-  const doc = new DOMParser().parseFromString(markup, mediaType as DOMParserSupportedType)
-  const spans = Array.from(doc.querySelectorAll('span.clip[data-src]'))
-  if (spans.length === 0) return markup
-  for (const span of spans) {
-    // One unresolvable clip must not break the section: warn loudly, leave
-    // the span as-is (it degrades per the publisher contract).
-    try {
-      const raw = span.getAttribute('data-src')
-      if (!raw || HAS_SCHEME.test(raw)) continue
-      const href = resolveBookHref(raw, sectionHref)
-      let url = urlCache.get(href)
-      if (!url) {
-        const data = await book.loadBlob?.(href)
-        if (!data) {
-          console.warn(`READ.html: clip data-src "${raw}" (resolved "${href}") not in the book`)
-          continue
-        }
-        const type = book.resources?.manifest?.find((item) => item.href === href)?.mediaType
-        url = URL.createObjectURL(type ? new Blob([data], { type }) : data)
-        urlCache.set(href, url)
-      }
-      span.setAttribute('data-src', url)
-    } catch (cause) {
-      console.warn('READ.html: clip data-src rewrite failed', span.getAttribute('data-src'), cause)
-    }
-  }
-  return new XMLSerializer().serializeToString(doc)
+  return rewriteDataSrcMarkup(markup, mediaType, sectionHref, async (href) => {
+    const cached = urlCache.get(href)
+    if (cached) return cached
+    const data = await book.loadBlob?.(href)
+    if (!data) return null
+    const type = book.resources?.manifest?.find((item) => item.href === href)?.mediaType
+    const url = URL.createObjectURL(type ? new Blob([data], { type }) : data)
+    urlCache.set(href, url)
+    return url
+  })
 }
 
 export interface OpenBookOptions {

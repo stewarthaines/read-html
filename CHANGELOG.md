@@ -7,6 +7,7 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 ### Fixed
 
 - Moving 3D drawings in fixed-layout books, such as SEED.html's building instructions, stay sharp when the page is enlarged to fit the screen.
+- Interactive books you have trusted can load files their pages name for later use, so SEED.html's building-instruction pages draw in READ.html however it is opened.
 
 ## [0.6.0] — 2026-09-25
 
