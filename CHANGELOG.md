@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- Moving 3D drawings in fixed-layout books, such as SEED.html's building instructions, stay sharp when the page is enlarged to fit the screen.
+
 ## [0.6.0] — 2026-09-25
 
 ### Added

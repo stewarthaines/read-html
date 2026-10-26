@@ -155,6 +155,13 @@ export class FixedLayout extends HTMLElement {
                 transformOrigin: 'top left',
                 display: blank ? 'none' : 'block',
             })
+            // READ.html patch: a page scaled by the transform gets no resize
+            // of its own, so it is sent one when its scale changes; a canvas
+            // can then redraw at the size it is shown (see VENDORED.md)
+            if (!onZoom && frame.scale !== scale) {
+                frame.scale = scale
+                iframe.contentWindow?.dispatchEvent(new Event('resize'))
+            }
             Object.assign(element.style, {
                 width: `${(width ?? blankWidth) * scale}px`,
                 height: `${(height ?? blankHeight) * scale}px`,
