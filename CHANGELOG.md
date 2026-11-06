@@ -2,6 +2,14 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- A book opened from a link shows its download progress, then "Opening the book…", instead of an empty library.
+- While a book is open, the address shows the link it came from, ready to copy and share; reloading reopens it.
+- Opening a link to a book you already have opens your copy straight away, even offline.
+
 ## [0.7.0] — 2026-10-27
 
 ### Fixed

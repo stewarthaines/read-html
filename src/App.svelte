@@ -2,7 +2,8 @@
   import { onMount } from 'svelte'
   import { downloadBook } from './lib/catalog/download'
   import { downloadFileName, saveBlob } from './lib/library/download'
-  import { t } from './lib/i18n/index.svelte'
+  import { locale, t } from './lib/i18n/index.svelte'
+  import type { FetchProgress } from './lib/catalog/fetch-progress'
   import { settings } from './lib/settings/index.svelte'
   import { applyAppTheme } from './lib/theme/app'
   import Library from './lib/library/Library.svelte'
@@ -11,7 +12,13 @@
   import { readEmbeddedPayload } from './lib/payload'
   import { createBookStorage } from './lib/storage/index'
   import { sha256Hex } from './lib/storage/hash'
-  import { deleteBook, getBook, listBooks, updateBook } from './lib/storage/metadata'
+  import {
+    deleteBook,
+    findBookBySource,
+    getBook,
+    listBooks,
+    updateBook,
+  } from './lib/storage/metadata'
   import { readPayloadPosition, writePayloadPosition } from './lib/storage/payload-position'
   import type { BookRecord } from './lib/storage/types'
   import { debounce } from './lib/util/debounce'
@@ -38,6 +45,8 @@
   // Deep-linked catalog (?catalog=), browsed by the library's sources pane.
   let initialCatalogUrl = $state<string | null>(null)
   let error = $state('')
+  // A `?book=` link on its way in: what the status line says until the reader opens.
+  let progress = $state('')
   // Feature 11: memory-only storage still reads books but keeps nothing.
   let volatileStorage = $state(false)
 
@@ -48,12 +57,13 @@
     void refresh()
     // A non-empty payload slot wins over deep links (docs/PAYLOAD_SLOT.md).
     if (openEmbedded()) return
-    // Deep links (§3.7) are read once at startup, then cleared so reloads
-    // return to the app's own state.
+    // Deep links (§3.7) are read once at startup. `?catalog=` is cleared so a
+    // reload returns to the app's own state; `?book=` stays while its book is
+    // open (showAddress), so the address can be shared or reloaded.
     const params = new URLSearchParams(location.search)
     const bookUrl = params.get('book')
     const catalogUrl = params.get('catalog')
-    if (bookUrl || catalogUrl) history.replaceState(null, '', location.pathname)
+    if (catalogUrl && !bookUrl) showAddress(undefined)
     if (bookUrl) void openFromUrl(bookUrl)
     else if (catalogUrl) initialCatalogUrl = catalogUrl
   })
@@ -87,6 +97,27 @@
     applyAppTheme(settings.theme)
   })
 
+  // The address names the open book's source (`?book=`) while it is open, so
+  // it can be copied to share the book or reloaded to reopen it; otherwise it
+  // is the bare page. replaceState: the back button behaves as before.
+  function showAddress(sourceUrl: string | undefined): void {
+    const url = new URL(location.pathname, location.href)
+    if (sourceUrl) url.searchParams.set('book', sourceUrl)
+    history.replaceState(history.state, '', url)
+  }
+
+  function describeProgress({ loaded, total }: FetchProgress): string {
+    const amount =
+      total === null
+        ? new Intl.NumberFormat(locale(), {
+            style: 'unit',
+            unit: 'megabyte',
+            maximumFractionDigits: 1,
+          }).format(loaded / 1_000_000)
+        : new Intl.NumberFormat(locale(), { style: 'percent' }).format(loaded / total)
+    return `${t('Downloading the book…')} ${amount}`
+  }
+
   async function refresh(): Promise<void> {
     books = await listBooks()
   }
@@ -97,6 +128,7 @@
       const record = await importBook(await storage, file)
       lastCfi = null
       initialCatalogUrl = null
+      showAddress(undefined)
       current = {
         id: record.id,
         file,
@@ -116,6 +148,7 @@
     const record = (await getBook(listed.id)) ?? listed
     const file = await (await storage).get(record.id)
     if (!file) {
+      showAddress(undefined)
       error = t('This book is missing from storage.')
       return
     }
@@ -123,6 +156,7 @@
     lastCfi = null
     // A consumed deep link must not re-open the catalog when the reader closes.
     initialCatalogUrl = null
+    showAddress(record.sourceUrl)
     current = {
       id: record.id,
       file,
@@ -133,13 +167,27 @@
     }
   }
 
+  // A `?book=` link opens the stored copy it already brought in, if any (no
+  // download, works offline); otherwise it downloads with progress showing.
   async function openFromUrl(url: string): Promise<void> {
     error = ''
     try {
-      const record = await downloadBook(await storage, url, false)
+      const stored = await findBookBySource(url)
+      if (stored) {
+        await handleOpen(stored)
+        return
+      }
+      progress = t('Downloading the book…')
+      const record = await downloadBook(await storage, url, false, (step) => {
+        progress = describeProgress(step)
+      })
+      progress = t('Opening the book…')
       await handleOpen(record)
     } catch (cause) {
+      showAddress(undefined)
       error = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      progress = ''
     }
   }
 
@@ -230,6 +278,7 @@
     persistPosition.flush()
     persistPayloadPosition.flush()
     current = undefined
+    showAddress(undefined)
     await refresh()
   }
 </script>
@@ -258,6 +307,9 @@
         'This browser will not keep books here: your library and reading positions last only until this page closes.',
       )}
     </p>
+  {/if}
+  {#if progress}
+    <p role="status" class="notice">{progress}</p>
   {/if}
   {#if error}
     <p role="alert">{error}</p>

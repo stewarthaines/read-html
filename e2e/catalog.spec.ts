@@ -112,7 +112,8 @@ test('?book= deep link fetches and opens an EPUB, %20 included', async ({ page }
   await page.goto(`/?book=${encodeURIComponent(`${FIXTURES}/spaces%20in%20name.epub`)}`)
   const section = page.frameLocator('iframe')
   await expect(section.getByRole('heading', { name: 'Chapter One' })).toBeVisible()
-  expect(new URL(page.url()).search).toBe('')
+  // The address keeps the link, %20 intact (encoded exactly once).
+  expect(new URL(page.url()).searchParams.get('book')).toBe(`${FIXTURES}/spaces%20in%20name.epub`)
   await page.getByRole('button', { name: 'Library' }).click()
   await expect(page.getByRole('listitem').filter({ hasText: 'Spaces In Name' })).toBeVisible()
 })
@@ -159,6 +160,66 @@ test('a book opened from disk offers no editor link', async ({ page }) => {
   await expect(
     page.getByRole('dialog', { name: 'Settings' }).getByRole('link', { name: 'Edit in SEED.html' }),
   ).toHaveCount(0)
+  // No source URL, so no ?book= in the address either.
+  expect(new URL(page.url()).search).toBe('')
+})
+
+test('the address names the open book only while it is open', async ({ page }) => {
+  const bookUrl = `${FIXTURES}/basic-ltr.epub`
+  await page.goto(`/?book=${encodeURIComponent(bookUrl)}`)
+  const heading = page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' })
+  await expect(heading).toBeVisible()
+  expect(new URL(page.url()).searchParams.get('book')).toBe(bookUrl)
+
+  await page.getByRole('button', { name: 'Library' }).click()
+  await expect(page.getByRole('button', { name: /^Basic LTR/ })).toBeVisible()
+  expect(new URL(page.url()).search).toBe('')
+
+  // A library copy with a known source puts its link back in the address.
+  await page.getByRole('button', { name: /^Basic LTR/ }).click()
+  await expect(heading).toBeVisible()
+  expect(new URL(page.url()).searchParams.get('book')).toBe(bookUrl)
+})
+
+test('a ?book= link to a stored book opens the stored copy without downloading', async ({
+  page,
+}) => {
+  const bookUrl = `${FIXTURES}/basic-ltr.epub`
+  await page.goto(`/?book=${encodeURIComponent(bookUrl)}`)
+  const heading = page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' })
+  await expect(heading).toBeVisible()
+
+  const fetched: string[] = []
+  page.on('request', (request) => {
+    if (request.url() === bookUrl) fetched.push(request.url())
+  })
+  await page.reload()
+  await expect(heading).toBeVisible()
+  expect(new URL(page.url()).searchParams.get('book')).toBe(bookUrl)
+  expect(fetched).toEqual([])
+})
+
+test('a ?book= download shows its progress until the reader opens', async ({ page }) => {
+  const bookUrl = `${FIXTURES}/basic-ltr.epub`
+  let release: () => void = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route(bookUrl, async (route) => {
+    await held
+    await route.continue()
+  })
+  await page.goto(`/?book=${encodeURIComponent(bookUrl)}`)
+  await expect(page.getByRole('status').filter({ hasText: 'Downloading the book' })).toBeVisible()
+  release()
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
+  ).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Downloading the book' })).toHaveCount(0)
+})
+
+test('a failed ?book= link leaves the bare address and shows the error', async ({ page }) => {
+  await page.goto(`/?book=${encodeURIComponent(`${FIXTURES}/no-such-book.epub`)}`)
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect(new URL(page.url()).search).toBe('')
 })
 
 test('drag-and-drop imports a book on the library', async ({ page }) => {

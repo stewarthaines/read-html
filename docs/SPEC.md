@@ -2,6 +2,15 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## Deep links keep their address, with progress (post-0.7)
+
+Accepted when (e2e: `e2e/catalog.spec.ts`; unit: `tests/fetch-progress.test.ts`):
+
+- While a `?book=` link downloads, a status line above the library shows progress: a locale-formatted percentage when the response carries a `Content-Length`, a running size otherwise. When the download ends it reads "Opening the book…" until the reader replaces the library. The line is a live region (`role="status"`), and an error replaces it.
+- While a book is open, the address carries `?book=<its source URL>`, encoded exactly once, for any book whose source URL is known: a `?book=` link, a catalog download, or a library copy of either. A book with no source URL (picker, drag-drop, embedded payload) leaves the bare address. Closing the reader returns to the bare address. Address changes use `history.replaceState`, so the back button behaves as before.
+- A `?book=` link whose URL matches a stored book's source URL opens that stored copy at its saved position, with no download (and so offline). Only a URL no stored book came from is fetched. Replacing a stored copy with a new version at the same URL means deleting it first.
+- A `?book=` link that fails leaves the bare address and shows the error, as before.
+
 ## Download a book (post-0.1)
 
 Accepted when (e2e: `e2e/download.spec.ts`; unit: `tests/download.test.ts`):
@@ -38,7 +47,7 @@ Accepted when all of the following hold (e2e: `e2e/catalog.spec.ts`; unit: `test
 - Catalog view: add a catalog by URL (saving it), browse publications and navigation sub-feeds, covers from the feed's image links, download-to-library. Saved catalogs (localStorage `readhtml_catalogs`, key in `storage/keys.ts`, try/catch-wrapped) list with open, remove, and a per-catalog "Trust books from this catalog" toggle.
 - **URL-encoding correctness (§3.7)**: feed hrefs are used exactly as given, resolved with `new URL(href, base)`, never re-encoded. Unit tests pin `%20` staying `%20` (not `%2520`); e2e downloads `spaces in name.epub` through the fixture catalog end-to-end and reads it (internal `%20` hrefs included).
 - **No proxy; CORS is the publisher's job**: a failed catalog or book fetch shows a friendly error naming CORS as the likely cause. e2e asserts it against a no-CORS endpoint on the fixture server.
-- Deep links, read once at startup then cleared from the URL: `?book=<url>` fetches and opens an EPUB (imported to the library); `?catalog=<url>` opens the catalog browser pre-loaded.
+- Deep links, read once at startup ~~then cleared from the URL~~ (superseded for `?book=`: see "Deep links keep their address"): `?book=<url>` fetches and opens an EPUB (imported to the library); `?catalog=<url>` opens the catalog browser pre-loaded and is cleared from the URL.
 - Drag-drop import onto the library (per the M2 amendment), same pipeline as the picker.
 - Trust-this-catalog (§3.4 step 4): books downloaded from a trusted catalog record `scriptingConsent: true` at import (never overriding an explicit revocation); e2e: the clips book via a trusted catalog opens with scripts running and no prompt.
 - Fixtures (§6): `spaces in name.epub` (literal spaces in the zip names, `%20` in OPF/nav hrefs) and `catalog.xml` (OPDS 1.x Atom) whose acquisition hrefs carry `%20` and point at the real generated fixtures, plus a cover asset with a space in its name; served by the e2e fixture static server (CORS on, with a `/no-cors/` mirror).

@@ -56,6 +56,11 @@ export async function listBooks(): Promise<BookRecord[]> {
   return stored.map(fromStored).sort((a, b) => b.lastOpened - a.lastOpened)
 }
 
+/** The stored book downloaded from `url` (its `sourceUrl`), if any. */
+export async function findBookBySource(url: string): Promise<BookRecord | undefined> {
+  return (await listBooks()).find((record) => record.sourceUrl === url)
+}
+
 export async function getBook(id: string): Promise<BookRecord | undefined> {
   const stored = await inBooksStore(
     'readonly',
