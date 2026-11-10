@@ -118,6 +118,7 @@ Accepted when all of the following hold (e2e: `e2e/reader.spec.ts`, `e2e/visual.
 - The start screen offers a native file picker (`<input type="file">`, `.epub`); picking `fixtures/build/basic-ltr.epub` opens the book in the reader view.
 - The book renders paginated (foliate paginator, default flow); the first page of chapter one is visible after open.
 - Next/previous work from toolbar buttons and keyboard (ArrowRight/ArrowLeft via foliate's direction-aware `goRight`/`goLeft`, plus PageDown/PageUp/Space); advancing moves the reading position forward, going back returns.
+- Paging keys work whenever nothing focused needs them: focus left on a toolbar button (as after a dialog closes) still pages with the arrows, while Space stays with the button; text fields, selects, sliders and radios keep their keys, as does anything in a dialog. The same holds inside a book section.
 - A TOC control opens a native `<dialog>` drawer listing the book's TOC; activating an entry navigates to that chapter and closes the drawer.
 - **Default scripting posture lands with first render (§3.4)**: every (X)HTML resource is script-stripped (`<script>` elements and `on*` attributes removed) via the Loader `data` hook before its blob URL is created. The consent flow that can lift this arrives at M5; until then stripping is unconditional. Unit-tested at the DOM level; e2e asserts a stripped book still renders.
 - UI strings go through the i18n `t()` function (gettext-style: English source text as key); no hardcoded strings in markup.

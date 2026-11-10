@@ -7,6 +7,7 @@
   import { decideScripting } from '../scripting/consent'
   import { backdropClose } from '../ui/backdrop.svelte'
   import { bookIsScripted, openBook, type FoliateViewElement, type TocItem } from './foliate'
+  import { keyIsClaimed } from './keys'
 
   interface Props {
     file: Blob
@@ -131,13 +132,9 @@
 
   function handleKeydown(event: KeyboardEvent): void {
     if (tocDialog?.open || consentDialog?.open || settingsDialog?.isOpen()) return
-    // Keys aimed at form controls (selects, the file input, buttons) must
-    // act on the control, never page the book.
-    if (
-      event.target instanceof Element &&
-      event.target.closest('input, select, button, textarea, dialog')
-    )
-      return
+    // A key the focused control acts on itself (a select's arrows, a
+    // button's Space) is left to it; every other paging key pages.
+    if (keyIsClaimed(event.target, event.key)) return
     switch (event.key) {
       // Arrows are physical; goLeft/goRight map them to logical prev/next
       // from the book's page-progression direction (§3.3).

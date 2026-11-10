@@ -8,6 +8,10 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 - Settings show which version of READ.html you are using.
 
+### Fixed
+
+- The arrow keys turn pages straight after closing settings or the contents, without clicking the book first.
+
 ## [0.8.0] — 2026-11-06
 
 ### Added

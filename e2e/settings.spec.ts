@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { openFixture } from './helpers'
+import { openFixture, readingFraction } from './helpers'
 
 type ViewWithRenderer = Element & { renderer?: Element }
 
@@ -197,6 +197,23 @@ test('the settings dialog closes on a backdrop click', async ({ page }) => {
   // Click well outside the centered dialog box.
   await page.mouse.click(5, 5)
   await expect(dialog).not.toBeVisible()
+})
+
+// Closing a modal returns focus to the button that opened it; arrows must
+// still page from there, while Space stays with the focused button.
+test('arrows page after the settings dialog closes on a backdrop click', async ({ page }) => {
+  await openFixture(page)
+  const start = (await readingFraction(page)) ?? 0
+  const dialog = await openSettings(page)
+  await page.mouse.click(5, 5)
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByRole('button', { name: 'Settings' })).toBeFocused()
+  await expect
+    .poll(async () => {
+      await page.keyboard.press('ArrowRight')
+      return readingFraction(page)
+    })
+    .toBeGreaterThan(start)
 })
 
 test('the version is shown in the settings dialog', async ({ page }) => {
