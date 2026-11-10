@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { REPO_URL } from '../about'
+  import { REPO_URL, VERSION } from '../about'
   import { t } from '../i18n/index.svelte'
   import { listBooks, updateBook } from '../storage/metadata'
   import type { BookRecord } from '../storage/types'
@@ -137,10 +137,10 @@
       </div>
     {/if}
     <button>{t('Close')}</button>
-    <!-- §3.8 about panel: the name, one plain sentence, the license, the
-         source link. Nothing else. -->
+    <!-- §3.8 about panel: the name and version, one plain sentence, the
+         license, the source link. Nothing else. -->
     <footer class="about">
-      <p>READ.html — {t('A reader for EPUB books that works in your browser.')}</p>
+      <p>READ.html {VERSION} — {t('A reader for EPUB books that works in your browser.')}</p>
       <p><a href={REPO_URL}>{t('Source code')}</a> · {t('MIT license')}</p>
     </footer>
   </form>

@@ -10,13 +10,15 @@ import { defineConfig, type PluginOption } from 'vite'
 // Object.groupBy) are handled by src/lib/polyfills.ts. Shared by both builds.
 export const BUILD_TARGET = ['chrome107', 'edge107', 'firefox104', 'safari16']
 
-// Stamps the readhtml-version meta (docs/PAYLOAD_SLOT.md) from package.json.
+// Stamps the readhtml-version meta (docs/PAYLOAD_SLOT.md) from package.json,
+// and defines the same version for the app's code (the settings dialog).
 export function readhtmlVersion(): PluginOption {
   const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
     version: string
   }
   return {
     name: 'readhtml-version',
+    config: () => ({ define: { __READHTML_VERSION__: JSON.stringify(pkg.version) } }),
     transformIndexHtml: (html) => html.replace('__READHTML_VERSION__', pkg.version),
   }
 }

@@ -8,6 +8,7 @@
 - The owner runs the dev server; the agent never needs to start it.
 - The owner is the system-architecture expert. When orientation is needed, ask them before sweeping the codebase.
 - Commit hygiene: one concern per commit; stage named files, never `git add -A`.
+- A release is one `chore: version X.Y.Z — …` commit (package.json, lockfile, changelog), tagged on that commit with `git tag -a vX.Y.Z -m "READ.html X.Y.Z"`; push the tag with the commit.
 - Changelog entries describe **what the user experiences**, one short line per change. Mechanisms and implementation detail belong in commit messages.
 - Markdown documents use one line per paragraph — no hard-wrapping.
 

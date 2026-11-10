@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- Settings show which version of READ.html you are using.
+
 ## [0.8.0] — 2026-11-06
 
 ### Added

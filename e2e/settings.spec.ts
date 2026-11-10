@@ -198,3 +198,11 @@ test('the settings dialog closes on a backdrop click', async ({ page }) => {
   await page.mouse.click(5, 5)
   await expect(dialog).not.toBeVisible()
 })
+
+test('the version is shown in the settings dialog', async ({ page }) => {
+  await openFixture(page)
+  const dialog = await openSettings(page)
+  const version = await page.locator('meta[name="readhtml-version"]').getAttribute('content')
+  expect(version).toMatch(/^\d+\.\d+\.\d+/)
+  await expect(dialog.getByText(`READ.html ${version}`, { exact: false })).toBeVisible()
+})
