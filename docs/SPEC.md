@@ -85,7 +85,7 @@ Accepted when all of the following hold (e2e: `e2e/settings.spec.ts`; unit: `tes
 
 - A reactive, localStorage-backed settings store (`readhtml_settings` key, defined only in `storage/keys.ts`) holds flow, font size, and theme; every read/write is try/catch-wrapped with defaults on failure, and corrupt or out-of-range stored values sanitize to defaults (unit-tested).
 - Reading mode: paginated ↔ scrolled via foliate's `flow` attribute, switchable while reading without losing position; persisted and restored across reload.
-- Font size: a native range control (70–150%) sets a root `font-size` percentage injected into every book section; publisher styles cascade under it; persisted.
+- Font size: a native range control (70–150%), flanked by − and + buttons that step it by 10 and disable at either end, sets a root `font-size` percentage injected into every book section; publisher styles cascade under it; persisted.
 - Theme: auto (default, follows `prefers-color-scheme`) / light / dark, applied to app chrome and book content by constraining `color-scheme` — system colors flip with it; no inversion filters. Manual override persists; book content styling is injected CSS via the renderer's `setStyles`.
 - Settings live in a native `<dialog>` reachable from both the reader toolbar and the library; paging keys are inert while it is open, and keys targeted at form controls never page.
 - Accessibility: axe passes with the settings dialog open. Visual snapshots: dark-theme reader and scrolled-flow reader.

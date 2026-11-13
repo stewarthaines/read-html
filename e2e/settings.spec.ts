@@ -66,6 +66,10 @@ test('font size scales book content and persists across reload', async ({ page }
   const dialog = await openSettings(page)
   await dialog.getByRole('slider', { name: /Font size/ }).fill('150')
   await expect.poll(() => bookBodyFontSize(page)).toBeGreaterThan(before)
+  // At the maximum, + is disabled; − steps down by one notch, dialog still open.
+  await expect(dialog.getByRole('button', { name: 'Larger text' })).toBeDisabled()
+  await dialog.getByRole('button', { name: 'Smaller text' }).click()
+  await expect(dialog.getByRole('slider', { name: /Font size/ })).toHaveValue('140')
   await dialog.getByRole('button', { name: 'Close' }).click()
 
   await page.reload()

@@ -19,6 +19,7 @@ export interface Settings {
 
 export const FONT_SIZE_MIN = 70
 export const FONT_SIZE_MAX = 150
+export const FONT_SIZE_STEP = 10
 
 const DEFAULTS: Settings = { flow: 'paginated', spread: 'auto', fontSize: 100, theme: 'auto' }
 

@@ -5,7 +5,7 @@
   import type { BookRecord } from '../storage/types'
   import { backdropClose } from '../ui/backdrop.svelte'
   import { editorUrl } from '../editor'
-  import { FONT_SIZE_MAX, FONT_SIZE_MIN, settings } from './index.svelte'
+  import { FONT_SIZE_MAX, FONT_SIZE_MIN, FONT_SIZE_STEP, settings } from './index.svelte'
 
   interface Props {
     /** Reader context. Present only while a book is open: its own trust
@@ -28,6 +28,10 @@
   const columnsOff = $derived(settings.flow !== 'paginated')
 
   let dialog: HTMLDialogElement
+
+  function stepFontSize(delta: number): void {
+    settings.fontSize = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, settings.fontSize + delta))
+  }
   // §3.4 step 4: books with a recorded consent grant, revocable here.
   let trusted = $state<BookRecord[]>([])
 
@@ -80,17 +84,37 @@
         >
       </span>
     </div>
-    <label>
-      {t('Font size')}
-      <input
-        type="range"
-        min={FONT_SIZE_MIN}
-        max={FONT_SIZE_MAX}
-        step="10"
-        bind:value={settings.fontSize}
-      />
-      <span>{settings.fontSize}%</span>
-    </label>
+    <!-- Buttons beside the slider step it exactly, which a thumb on a touch
+         screen does not. type="button": the form's method="dialog" would
+         otherwise close the dialog on every step. -->
+    <div class="row" role="group" aria-labelledby="font-size-label">
+      <span id="font-size-label">{t('Font size')}</span>
+      <span class="choices stepper">
+        <button
+          type="button"
+          onclick={() => stepFontSize(-FONT_SIZE_STEP)}
+          disabled={settings.fontSize <= FONT_SIZE_MIN}
+          aria-label={t('Smaller text')}
+          title={t('Smaller text')}>−</button
+        >
+        <input
+          type="range"
+          min={FONT_SIZE_MIN}
+          max={FONT_SIZE_MAX}
+          step={FONT_SIZE_STEP}
+          aria-labelledby="font-size-label"
+          bind:value={settings.fontSize}
+        />
+        <button
+          type="button"
+          onclick={() => stepFontSize(FONT_SIZE_STEP)}
+          disabled={settings.fontSize >= FONT_SIZE_MAX}
+          aria-label={t('Larger text')}
+          title={t('Larger text')}>+</button
+        >
+        <span class="value">{settings.fontSize}%</span>
+      </span>
+    </div>
     <label>
       {t('Theme')}
       <select bind:value={settings.theme}>
@@ -179,6 +203,23 @@
   .choices label {
     justify-content: start;
     gap: 0.25rem;
+  }
+
+  .stepper {
+    gap: 0.375rem;
+  }
+
+  .stepper button {
+    align-self: auto;
+    min-inline-size: 2rem;
+  }
+
+  /* Wide enough for "100%" with equal-width digits, so the slider and
+     buttons stay put as the value changes. */
+  .stepper .value {
+    inline-size: 4.5ch;
+    font-variant-numeric: tabular-nums;
+    text-align: end;
   }
 
   .row.off {
