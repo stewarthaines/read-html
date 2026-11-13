@@ -25,6 +25,11 @@ export interface BookRecord {
    *  used to detect that a catalog offers a newer version of a held book.
    *  Absent when the EPUB declares none or for records from before this field. */
   modified?: string
+  /** The catalog entry's version signal when these bytes were acquired from
+   *  it. A catalog may date an entry later than the EPUB's own
+   *  dcterms:modified (or serve unchanged bytes); without this the entry
+   *  would offer the same update forever. */
+  catalogVersion?: string
   /** The URL these bytes were fetched from — a `?book=` deep link or a catalog
    *  acquisition link. Absent for books imported from disk or embedded as
    *  payload, which have no source to point back at. */

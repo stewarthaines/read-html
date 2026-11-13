@@ -12,6 +12,8 @@
     initialCatalogUrl?: string | null
     onopen: (book: BookRecord) => void
     onupdate: (previous: BookRecord, updated: BookRecord) => void
+    /** A catalog download landed in storage; the collection should re-list. */
+    onacquire: () => void
     ondelete: (book: BookRecord) => void
     ondownload: (book: BookRecord) => void
     onpick: (file: File) => void
@@ -22,6 +24,7 @@
     initialCatalogUrl = null,
     onopen,
     onupdate,
+    onacquire,
     ondelete,
     ondownload,
     onpick,
@@ -112,6 +115,7 @@
           {libraryByIdentifier}
           {onopen}
           {onupdate}
+          {onacquire}
           ontitle={(value) => (feedTitle = value)}
         />
       {/key}

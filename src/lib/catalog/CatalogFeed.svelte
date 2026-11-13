@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { SvelteMap } from 'svelte/reactivity'
   import { t } from '../i18n/index.svelte'
   import type { BookRecord, BookStorage } from '../storage/types'
+  import { updateBook } from '../storage/metadata'
   import { downloadBook } from './download'
   import { fetchCatalog, type CatalogFeed } from './feed'
   import { saveCatalog, savedCatalogs } from './saved.svelte'
@@ -17,15 +19,31 @@
     onopen: (record: BookRecord) => void
     /** Replaces a held book with a freshly downloaded newer version. */
     onupdate: (previous: BookRecord, updated: BookRecord) => void
+    /** A download landed in storage. The entry then offers Open; nothing opens
+        by itself, so several books can be fetched before choosing one. */
+    onacquire: () => void
     /** Reports the current feed title, for the library's top bar. */
     ontitle: (title: string) => void
   }
-  let { root, save, storage, libraryByIdentifier, onopen, onupdate, ontitle }: Props = $props()
+  let { root, save, storage, libraryByIdentifier, onopen, onupdate, onacquire, ontitle }: Props =
+    $props()
 
   let feed = $state<CatalogFeed>()
   let loading = $state(false)
   let error = $state('')
   let busyHref = $state('')
+  // Download an entry's book and remember which catalog version it answered,
+  // so the entry stops offering it as an update.
+  async function acquire(href: string, version: string | null): Promise<BookRecord> {
+    const record = await downloadBook(await storage, href, trusted)
+    if (!version || record.catalogVersion === version) return record
+    await updateBook(record.id, { catalogVersion: version })
+    return { ...record, catalogVersion: version }
+  }
+
+  // Books downloaded in this session, keyed by entry href: an entry whose
+  // book has no dc:identifier still turns to Open once it is held.
+  const acquired = new SvelteMap<string, BookRecord>()
 
   // §3.4 step 4: downloads are auto-consented when the saved root is trusted.
   const trusted = $derived(savedCatalogs().find((c) => c.url === root)?.trustBooks === true)
@@ -58,12 +76,12 @@
     void load(url)
   }
 
-  async function download(href: string): Promise<void> {
+  async function download(href: string, version: string | null): Promise<void> {
     busyHref = href
     error = ''
     try {
-      const record = await downloadBook(await storage, href, trusted)
-      onopen(record)
+      acquired.set(href, await acquire(href, version))
+      onacquire()
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     } finally {
@@ -81,8 +99,8 @@
       const detail = await fetchCatalog(detailHref)
       const epub = detail.entries.find((entry) => entry.kind === 'epub')
       if (!epub) throw new Error(t('No EPUB found for this book.'))
-      const record = await downloadBook(await storage, epub.href, trusted)
-      onopen(record)
+      acquired.set(detailHref, await acquire(epub.href, epub.version))
+      onacquire()
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     } finally {
@@ -91,11 +109,12 @@
   }
 
   // Re-download a held book's newer version; the parent replaces the old copy.
-  async function update(previous: BookRecord, href: string): Promise<void> {
+  async function update(previous: BookRecord, href: string, version: string | null): Promise<void> {
     busyHref = href
     error = ''
     try {
-      const updated = await downloadBook(await storage, href, trusted)
+      const updated = await acquire(href, version)
+      acquired.set(href, updated)
       onupdate(previous, updated)
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
@@ -104,17 +123,20 @@
     }
   }
 
-  function heldBook(identifier: string | null): BookRecord | undefined {
-    return identifier ? libraryByIdentifier.get(identifier) : undefined
+  function heldBook(identifier: string | null, href: string): BookRecord | undefined {
+    return (identifier ? libraryByIdentifier.get(identifier) : undefined) ?? acquired.get(href)
   }
 
   // A catalog entry offers an update when its version is strictly newer than
-  // the held copy's. Unparseable/absent dates never claim an update.
+  // both the held copy's dcterms:modified and the catalog version it was
+  // acquired at. Unparseable/absent dates never claim an update.
   function updatable(version: string | null, held: BookRecord | undefined): boolean {
     if (!held?.modified || !version) return false
     const offered = Date.parse(version)
     const owned = Date.parse(held.modified)
-    return !Number.isNaN(offered) && !Number.isNaN(owned) && offered > owned
+    const acquiredAt = Date.parse(held.catalogVersion ?? '')
+    if (Number.isNaN(offered) || Number.isNaN(owned)) return false
+    return offered > owned && (Number.isNaN(acquiredAt) || offered > acquiredAt)
   }
 </script>
 
@@ -130,7 +152,7 @@
       <!-- Keyed by position: the list is replaced wholesale on each load, and
            entries need not have unique hrefs (unsupported ones have none). -->
       {#each feed.entries as entry, index (index)}
-        {@const held = heldBook(entry.identifier)}
+        {@const held = heldBook(entry.identifier, entry.href)}
         <li>
           {#if entry.coverUrl}
             <img class="cover" src={entry.coverUrl} alt="" />
@@ -146,18 +168,26 @@
             <button onclick={() => browse(entry.href)}>{t('Browse')}</button>
           {:else if entry.kind === 'unsupported'}
             <button class="badge" disabled title={entry.label ?? ''}>{entry.label}</button>
+          {:else if entry.kind === 'teaser' && held}
+            <button onclick={() => onopen(held)}>{t('Open')}</button>
           {:else if entry.kind === 'teaser'}
             <button disabled={busyHref === entry.href} onclick={() => resolve(entry.href)}>
               {busyHref === entry.href ? t('Downloading…') : t('Download')}
             </button>
           {:else if held && updatable(entry.version, held)}
-            <button disabled={busyHref === entry.href} onclick={() => update(held, entry.href)}>
+            <button
+              disabled={busyHref === entry.href}
+              onclick={() => update(held, entry.href, entry.version)}
+            >
               {busyHref === entry.href ? t('Updating…') : t('Update available')}
             </button>
           {:else if held}
             <button onclick={() => onopen(held)}>{t('Open')}</button>
           {:else}
-            <button disabled={busyHref === entry.href} onclick={() => download(entry.href)}>
+            <button
+              disabled={busyHref === entry.href}
+              onclick={() => download(entry.href, entry.version)}
+            >
               {busyHref === entry.href ? t('Downloading…') : t('Download')}
             </button>
           {/if}

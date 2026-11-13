@@ -49,6 +49,11 @@ test('downloads a book with %20 in its URL and reads it end-to-end (§3.7)', asy
     .filter({ hasText: 'Spaces In Name' })
     .getByRole('button', { name: 'Download' })
     .click()
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Spaces In Name' })
+    .getByRole('button', { name: 'Open' })
+    .click()
   const section = page.frameLocator('iframe')
   await expect(section.getByRole('heading', { name: 'Chapter One' })).toBeVisible()
 
@@ -86,6 +91,11 @@ test('trusted catalog auto-consents downloaded books (§3.4 step 4)', async ({ p
     .getByRole('listitem')
     .filter({ hasText: 'Clips Book' })
     .getByRole('button', { name: 'Download' })
+    .click()
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Clips Book' })
+    .getByRole('button', { name: 'Open' })
     .click()
   const section = page.frameLocator('iframe')
   await expect(section.getByRole('heading', { name: 'Clips Chapter' })).toBeVisible()
@@ -268,15 +278,30 @@ test('the sources pane shows trust and removal only on the active catalog', asyn
   await expect(home.getByRole('button', { name: 'Fixture Catalog', exact: true })).toBeVisible()
 })
 
+test('a download offers Open instead of opening, so several can be fetched', async ({ page }) => {
+  await loadFixtureCatalog(page)
+  const basic = page.getByRole('listitem').filter({ hasText: 'Basic LTR' })
+  const spaces = page.getByRole('listitem').filter({ hasText: 'Spaces In Name' })
+  await basic.getByRole('button', { name: 'Download' }).click()
+  await expect(basic.getByRole('button', { name: 'Open' })).toBeVisible()
+  await spaces.getByRole('button', { name: 'Download' }).click()
+  await expect(spaces.getByRole('button', { name: 'Open' })).toBeVisible()
+  // Still browsing the catalog; nothing opened by itself.
+  await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
+
+  // Both landed in the library.
+  await page.getByRole('button', { name: 'Library' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Basic LTR' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Spaces In Name' })).toBeVisible()
+})
+
 test('a book already in the library shows Open instead of Download', async ({ page }) => {
   // Acquire "Basic LTR" from the feed; it lands in the library keyed by its
   // dc:identifier, which the catalog entry also carries.
   await loadFixtureCatalog(page)
   const basic = page.getByRole('listitem').filter({ hasText: 'Basic LTR' })
   await basic.getByRole('button', { name: 'Download' }).click()
-  await expect(
-    page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
-  ).toBeVisible()
+  await expect(basic.getByRole('button', { name: 'Open' })).toBeVisible()
 
   // Re-open the same catalog: the held book now offers Open, not Download.
   await page.getByRole('button', { name: 'Library' }).click()
@@ -309,6 +334,11 @@ test('a multi-format entry downloads the EPUB, not another format', async ({ pag
     .filter({ hasText: 'Multi Format Book' })
     .getByRole('button', { name: 'Download' })
     .click()
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Multi Format Book' })
+    .getByRole('button', { name: 'Open' })
+    .click()
   await expect(
     page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
   ).toBeVisible()
@@ -329,13 +359,11 @@ test('entries we cannot acquire in-app are shown disabled with a reason', async 
   await expect(buy).toBeDisabled()
 })
 
-test('a teaser entry auto-resolves to its EPUB and opens it', async ({ page }) => {
+test('a teaser entry auto-resolves to its EPUB, which then opens', async ({ page }) => {
   await loadRichCatalog(page)
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'Teaser Book' })
-    .getByRole('button', { name: 'Download' })
-    .click()
+  const teaser = page.getByRole('listitem').filter({ hasText: 'Teaser Book' })
+  await teaser.getByRole('button', { name: 'Download' }).click()
+  await teaser.getByRole('button', { name: 'Open' }).click()
   await expect(
     page.frameLocator('iframe').getByRole('heading', { name: 'Chapter One' }),
   ).toBeVisible()
@@ -357,10 +385,17 @@ test('a newer catalog version shows Update available and replaces the held copy'
   const versioned = page.getByRole('listitem').filter({ hasText: 'Versioned Book' })
   await versioned.getByRole('button', { name: 'Update available' }).click()
 
-  // The updated content opens, and the library holds a single (replaced) copy.
+  // The entry then offers Open; the updated content opens, and the library
+  // holds a single (replaced) copy.
+  await expect(versioned.getByRole('button', { name: 'Update available' })).toHaveCount(0)
+  await versioned.getByRole('button', { name: 'Open' }).click()
   await expect(
     page.frameLocator('iframe').getByRole('heading', { name: 'Version Two' }),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Library' }).click()
   await expect(page.getByRole('listitem').filter({ hasText: 'Versioned Book' })).toHaveCount(1)
+
+  // Browsed again later, the entry still offers Open, not the same update.
+  await loadRichCatalog(page)
+  await expect(versioned.getByRole('button', { name: 'Open' })).toBeVisible()
 })

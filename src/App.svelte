@@ -220,13 +220,14 @@
 
   // Replace a held book with a newer version acquired from a catalog. The new
   // bytes import under their own content hash; drop the prior record unless the
-  // download turned out to be byte-identical (same id — a no-op update).
+  // download turned out to be byte-identical (same id — a no-op update). The
+  // entry then offers Open rather than opening, like a fresh download.
   async function handleUpdate(previous: BookRecord, updated: BookRecord): Promise<void> {
     if (updated.id !== previous.id) {
       await (await storage).delete(previous.id)
       await deleteBook(previous.id)
     }
-    await handleOpen(updated)
+    await refresh()
   }
 
   // The reader's download button saves the exact bytes it opened, under the
@@ -321,6 +322,7 @@
     onpick={handlePick}
     onopen={handleOpen}
     onupdate={handleUpdate}
+    onacquire={refresh}
     ondelete={handleDelete}
     ondownload={handleDownload}
   />

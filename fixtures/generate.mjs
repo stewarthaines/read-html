@@ -689,7 +689,9 @@ const versionedV1 = () => versionedBook(1, '2020-01-01T00:00:00Z', 'Version One'
 const versionedV2 = () => versionedBook(2, '2026-06-01T00:00:00Z', 'Version Two')
 
 // A rich acquisition feed exercising each entry kind. Kept separate from
-// catalog.xml so the existing catalog tests and baseline stay stable.
+// catalog.xml so the existing catalog tests and baseline stay stable. The
+// versioned entry is dated a day after its EPUB's own dcterms:modified, as
+// real catalogs can be, so a taken update must not keep offering itself.
 const CATALOG_RICH_XML = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/">
   <title>Rich Catalog</title>
@@ -729,7 +731,7 @@ const CATALOG_RICH_XML = `<?xml version="1.0" encoding="utf-8"?>
     <title>Versioned Book</title>
     <id>urn:uuid:00000000-0000-0000-0000-000000000009</id>
     <dc:identifier>urn:uuid:00000000-0000-0000-0000-000000000009</dc:identifier>
-    <dcterms:modified>2026-06-01T00:00:00Z</dcterms:modified>
+    <dcterms:modified>2026-06-02T00:00:00Z</dcterms:modified>
     <author><name>Fixture Author</name></author>
     <summary>Newer than the held copy.</summary>
     <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="versioned-v2.epub"/>
