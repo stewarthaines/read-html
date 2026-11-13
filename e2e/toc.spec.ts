@@ -101,15 +101,13 @@ test('the drawer heads with the book and marks the chapter being read', async ({
   )
   await expect(drawer.locator('[aria-current="true"]')).toHaveCount(1)
 
-  // Navigate to chapter three; reopened, the drawer marks it instead.
+  // Navigate to chapter three: the open drawer moves its mark there.
   await drawer.getByRole('button', { name: 'Chapter Three' }).click()
-  await expect(drawer).not.toBeVisible()
   await expect(
     page
       .frameLocator('iframe[title="Book content"]')
       .getByRole('heading', { name: 'Chapter Three' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Contents' }).click()
   await expect(drawer.getByRole('button', { name: 'Chapter Three' })).toHaveAttribute(
     'aria-current',
     'true',

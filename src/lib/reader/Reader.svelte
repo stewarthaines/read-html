@@ -181,9 +181,10 @@
     tocDialog.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'center' })
   }
 
+  // The drawer stays open, so a reader can skip between chapters before
+  // closing it, the way a blog's post list works.
   function goToEntry(item: TocItem): void {
     if (item.href) view?.goTo(item.href)
-    tocDialog.close()
   }
 </script>
 

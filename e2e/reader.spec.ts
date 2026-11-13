@@ -37,13 +37,17 @@ test('keyboard paging: arrows, PageDown/PageUp, and Space', async ({ page }) => 
   await expect.poll(press('Space')).toBeGreaterThan(start)
 })
 
-test('the TOC drawer navigates to a chapter and closes', async ({ page }) => {
+test('the TOC drawer navigates between chapters and stays open until closed', async ({ page }) => {
   const section = await openFixture(page)
   await page.getByRole('button', { name: 'Contents' }).click()
   const drawer = page.getByRole('dialog')
   await expect(drawer).toBeVisible()
   await drawer.getByRole('button', { name: 'Chapter Three' }).click()
   await expect(section.getByRole('heading', { name: 'Chapter Three' })).toBeVisible()
+  await expect(drawer).toBeVisible()
+  await drawer.getByRole('button', { name: 'Chapter Two' }).click()
+  await expect(section.getByRole('heading', { name: 'Chapter Two' })).toBeVisible()
+  await drawer.getByRole('button', { name: 'Close' }).click()
   await expect(drawer).not.toBeVisible()
 })
 

@@ -50,5 +50,6 @@ test('TOC navigates within the RTL book', async ({ page }) => {
   const drawer = page.getByRole('dialog', { name: 'Contents' })
   await drawer.getByRole('button', { name: 'الفصل الثالث' }).click()
   await expect(section.getByRole('heading', { name: 'الفصل الثالث' })).toBeVisible()
-  await expect(drawer).not.toBeVisible()
+  // The drawer stays open after a selection, so it can be closed explicitly.
+  await expect(drawer).toBeVisible()
 })

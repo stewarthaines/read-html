@@ -64,6 +64,10 @@ test('downloads a book with %20 in its URL and reads it end-to-end (§3.7)', asy
     .getByRole('button', { name: 'Chapter Two' })
     .click()
   await expect(section.getByRole('heading', { name: 'Chapter Two' })).toBeVisible()
+  await page
+    .getByRole('dialog', { name: 'Contents' })
+    .getByRole('button', { name: 'Close' })
+    .click()
 
   // Back to the library (reader's Library button); it landed in the collection.
   await page.getByRole('button', { name: 'Library' }).click()
