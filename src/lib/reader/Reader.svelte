@@ -22,6 +22,9 @@
     /** The book's library id, which it is served under while open (docs/SERVED_BOOK.md). */
     bookId: string
     initialPosition?: string | null
+    /** Book-level fraction to open at when there is no position: an updated
+     *  book reopens about where it was. */
+    startFraction?: number
     /** Recorded scripting consent from the book's metadata record (§3.4). */
     scriptingConsent?: boolean | undefined
     /** The URL this book was fetched from (`?book=`), offered to the editor. */
@@ -31,18 +34,22 @@
     onrelocate: (location: { cfi: string; fraction: number }) => void
     onconsent: (granted: boolean) => void
     ondownload: () => void
+    /** Present when a catalog offers a newer version of this book. */
+    onupdate?: () => Promise<void>
     onclose: () => void
   }
   let {
     file,
     bookId,
     initialPosition = null,
+    startFraction = undefined,
     scriptingConsent = undefined,
     sourceUrl = null,
     trustEditable = true,
     onrelocate,
     onconsent,
     ondownload,
+    onupdate = undefined,
     onclose,
   }: Props = $props()
 
@@ -105,6 +112,7 @@
       bookId,
       container,
       lastLocation: initialPosition,
+      startFraction,
       flow: settings.flow,
       maxColumnCount: columnCap(settings.spread),
       styles: bookContentCss(settings),
@@ -269,8 +277,11 @@
       <button onclick={openToc} aria-label={t('Contents')} title={t('Contents')}>☰</button>
     {/if}
     <h1>{title}</h1>
-    <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
-      >⚙</button
+    <button
+      class:has-update={onupdate !== undefined}
+      onclick={() => settingsDialog.open()}
+      aria-label={onupdate ? t('Settings, update available') : t('Settings')}
+      title={onupdate ? t('Settings, update available') : t('Settings')}>⚙</button
     >
     <button onclick={() => view?.prev()} aria-label={t('Previous page')} title={t('Previous page')}
       >{bookIsRtl ? '›' : '‹'}</button
@@ -310,6 +321,7 @@
         : undefined,
     sourceUrl,
     ondownload,
+    onupdate,
   }}
 />
 
@@ -371,6 +383,23 @@
   .toolbar button {
     font-size: 1rem;
     min-inline-size: 2rem;
+  }
+
+  /* A dot on the settings button, matching the library cover's update badge. */
+  .toolbar button.has-update {
+    position: relative;
+  }
+
+  .toolbar button.has-update::after {
+    content: '';
+    position: absolute;
+    inset-block-start: -0.2rem;
+    inset-inline-end: -0.2rem;
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+    border-radius: 50%;
+    background: var(--app-notice);
+    border: 2px solid Canvas;
   }
 
   /* The book, with the pinned contents column beside it when there is one. */

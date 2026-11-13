@@ -18,6 +18,9 @@
       sourceUrl?: string | null
       /** Saves the open book's bytes to disk. */
       ondownload: () => void
+      /** Present when a catalog offers a newer version of the open book:
+       *  replaces it and reopens the book. Rejects with a readable message. */
+      onupdate?: () => Promise<void>
     }
   }
   let { reading }: Props = $props()
@@ -48,6 +51,22 @@
     trusted = (await listBooks()).filter((book) => book.scriptingConsent === true)
   }
 
+  let updating = $state(false)
+  let updateError = $state('')
+
+  async function update(): Promise<void> {
+    if (!reading?.onupdate) return
+    updating = true
+    updateError = ''
+    try {
+      await reading.onupdate()
+    } catch (cause) {
+      updateError = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      updating = false
+    }
+  }
+
   async function revoke(book: BookRecord): Promise<void> {
     await updateBook(book.id, { scriptingConsent: false })
     trusted = trusted.filter((entry) => entry.id !== book.id)
@@ -56,6 +75,17 @@
 
 <dialog bind:this={dialog} aria-label={t('Settings')} use:backdropClose>
   <form method="dialog">
+    {#if reading?.onupdate}
+      <section class="update" aria-label={t('Update available')}>
+        <p>{t('A newer version of this book is available.')}</p>
+        <button type="button" class="action" disabled={updating} onclick={update}
+          >{updating ? t('Updating…') : t('Update')}</button
+        >
+        {#if updateError}
+          <p role="alert">{updateError}</p>
+        {/if}
+      </section>
+    {/if}
     <!-- A radiogroup rather than fieldset/legend: a legend is laid out by the
          UA outside the box's flow, so it cannot sit in the row beside its
          controls the way every other setting's label does. -->
@@ -275,6 +305,44 @@
   button.action {
     font: inherit;
     align-self: auto;
+  }
+
+  /* The update offer leads the dialog, set apart like the badge that led here. */
+  .update {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.375rem;
+    background: var(--app-notice);
+    color: var(--app-notice-fg);
+  }
+
+  .update p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  .update button {
+    font-weight: 600;
+    color: var(--app-notice);
+    background: var(--app-notice-fg);
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .update button:disabled {
+    opacity: 0.75;
+  }
+
+  .update p[role='alert'] {
+    flex-basis: 100%;
+    font-size: 0.85rem;
   }
 
   .about {

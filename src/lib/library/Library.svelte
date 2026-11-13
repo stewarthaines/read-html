@@ -7,6 +7,8 @@
 
   interface Props {
     books: BookRecord[]
+    /** Ids of books a catalog offers a newer version of. */
+    updates?: ReadonlySet<string>
     storage: Promise<BookStorage>
     /** Deep-linked catalog URL (?catalog=) to browse on load. */
     initialCatalogUrl?: string | null
@@ -20,6 +22,7 @@
   }
   let {
     books,
+    updates = new Set(),
     storage,
     initialCatalogUrl = null,
     onopen,
@@ -133,14 +136,22 @@
             {#each books as book (book.id)}
               <li>
                 <button class="open" onclick={() => onopen(book)}>
-                  {#if coverUrls.has(book.id)}
-                    <img class="cover" src={coverUrls.get(book.id)} alt="" />
-                  {:else}
-                    <span class="cover" aria-hidden="true"></span>
-                  {/if}
+                  <span class="cover-frame">
+                    {#if coverUrls.has(book.id)}
+                      <img class="cover" src={coverUrls.get(book.id)} alt="" />
+                    {:else}
+                      <span class="cover" aria-hidden="true"></span>
+                    {/if}
+                    {#if updates.has(book.id)}
+                      <span class="update-badge" aria-hidden="true">↻</span>
+                    {/if}
+                  </span>
                   <span class="booktitle">{book.title}</span>
                   <span class="author">{book.author}</span>
                   <span class="progress">{Math.round(book.fraction * 100)}%</span>
+                  {#if updates.has(book.id)}
+                    <span class="visually-hidden">{t('Update available')}</span>
+                  {/if}
                 </button>
                 <button
                   class="download"
@@ -249,6 +260,39 @@
 
   span.cover {
     display: block;
+  }
+
+  .cover-frame {
+    position: relative;
+    display: block;
+  }
+
+  /* A newer version is in a catalog: a badge on the cover's corner. */
+  .update-badge {
+    position: absolute;
+    inset-block-end: -0.4rem;
+    inset-inline-end: -0.4rem;
+    display: grid;
+    place-items: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: 50%;
+    background: var(--app-notice);
+    color: var(--app-notice-fg);
+    border: 2px solid Canvas;
+    box-shadow: 0 1px 3px color-mix(in srgb, CanvasText 40%, transparent);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .booktitle {

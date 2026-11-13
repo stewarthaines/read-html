@@ -72,6 +72,7 @@ export interface FoliateViewElement extends HTMLElement {
   open(book: FoliateBook): Promise<void>
   init(options: { lastLocation?: string; showTextStart?: boolean }): Promise<void>
   goTo(target: string | number): Promise<unknown>
+  goToFraction(fraction: number): Promise<unknown>
   goLeft(): Promise<unknown>
   goRight(): Promise<unknown>
   prev(distance?: number): Promise<void>
@@ -179,6 +180,9 @@ export interface OpenBookOptions {
   container: HTMLElement
   /** EPUB CFI to restore; omit to start from the beginning. */
   lastLocation?: string | null
+  /** Book-level fraction (0..1) to open at when there is no CFI to restore:
+   *  an updated book, whose old CFI may not survive the edits. */
+  startFraction?: number
   /** Initial renderer flow ('paginated' | 'scrolled'), applied before first render. */
   flow?: string
   /** Initial paginator column cap ('1' forces a single column), applied
@@ -236,5 +240,6 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
   if (options.maxColumnCount) view.renderer.setAttribute('max-column-count', options.maxColumnCount)
   if (options.styles) view.renderer.setStyles?.(options.styles)
   await view.init({ lastLocation: options.lastLocation ?? undefined })
+  if (!options.lastLocation && options.startFraction) await view.goToFraction(options.startFraction)
   return view
 }

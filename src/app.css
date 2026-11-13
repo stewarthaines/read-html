@@ -4,6 +4,11 @@
   --app-bg: Canvas;
   --app-fg: CanvasText;
   --app-accent: AccentColor;
+  /* The one colour of the app's own: an update waiting must be seen, and a
+     system Highlight is too quiet for that. White on it is ~5:1 in both
+     schemes. */
+  --app-notice: #c2410c;
+  --app-notice-fg: #fff;
   font-family: system-ui, sans-serif;
 }
 

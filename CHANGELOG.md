@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- Books from a catalog show a badge on their cover when the catalog has a newer version, and the reader's settings offer to update the book, reopening it about where you were.
+
 ## [0.10.1] — 2026-11-13
 
 ### Fixed

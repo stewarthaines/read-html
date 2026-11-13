@@ -15,7 +15,7 @@ import { t } from '../i18n/index.svelte'
 //                buy/borrow/sample/subscribe link); shown disabled with a label.
 type EntryKind = 'epub' | 'teaser' | 'feed' | 'unsupported'
 
-interface CatalogEntry {
+export interface CatalogEntry {
   kind: EntryKind
   title: string
   author: string

@@ -403,3 +403,36 @@ test('a newer catalog version shows Update available and replaces the held copy'
   await loadRichCatalog(page)
   await expect(versioned.getByRole('button', { name: 'Open' })).toBeVisible()
 })
+
+test('the library marks a book a saved catalog has a newer version of, and the reader updates it', async ({
+  page,
+}) => {
+  // Hold version one, imported from disk: no catalog recorded on it.
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/versioned-v1.epub')
+  const section = page.frameLocator('iframe')
+  await expect(section.getByRole('heading', { name: 'Version One' })).toBeVisible()
+  await page.getByRole('button', { name: 'Library' }).click()
+
+  // Saving the rich catalog, which lists version two, checks it automatically.
+  await loadRichCatalog(page)
+  await page.getByRole('button', { name: 'Library' }).click()
+  const card = page.getByRole('button', { name: /^Versioned Book/ })
+  await expect(card).toHaveAccessibleName(/Update available/)
+
+  // The reader's settings button carries the mark; the update lives inside.
+  await card.click()
+  await expect(section.getByRole('heading', { name: 'Version One' })).toBeVisible()
+  await page.getByRole('button', { name: 'Settings, update available' }).click()
+  await page
+    .getByRole('dialog', { name: 'Settings' })
+    .getByRole('button', { name: 'Update', exact: true })
+    .click()
+
+  // The new version reopens, the mark is gone, and one copy is held.
+  await expect(section.getByRole('heading', { name: 'Version Two' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Library' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Versioned Book' })).toHaveCount(1)
+  await expect(card).not.toHaveAccessibleName(/Update available/)
+})

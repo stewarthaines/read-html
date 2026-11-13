@@ -30,6 +30,10 @@ export interface BookRecord {
    *  dcterms:modified (or serve unchanged bytes); without this the entry
    *  would offer the same update forever. */
   catalogVersion?: string
+  /** The catalog feed the book was listed in when acquired from one, which
+   *  the library checks for newer versions. Absent for books acquired before
+   *  this field, or not from a catalog; saved catalogs are checked for those. */
+  catalogUrl?: string
   /** The URL these bytes were fetched from — a `?book=` deep link or a catalog
    *  acquisition link. Absent for books imported from disk or embedded as
    *  payload, which have no source to point back at. */

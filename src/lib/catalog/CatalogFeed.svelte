@@ -7,6 +7,7 @@
   import { downloadBook } from './download'
   import { fetchCatalog, type CatalogFeed } from './feed'
   import { saveCatalog, savedCatalogs } from './saved.svelte'
+  import { offersUpdate } from './updates'
 
   interface Props {
     /** The saved-catalog root URL for this browse session (governs trust). */
@@ -32,13 +33,21 @@
   let loading = $state(false)
   let error = $state('')
   let busyHref = $state('')
-  // Download an entry's book and remember which catalog version it answered,
-  // so the entry stops offering it as an update.
-  async function acquire(href: string, version: string | null): Promise<BookRecord> {
+  // Download an entry's book and remember the feed it was listed in and the
+  // catalog version it answered: the library checks that feed for updates,
+  // and the entry stops offering the version once taken.
+  async function acquire(
+    href: string,
+    version: string | null,
+    feedUrl: string,
+  ): Promise<BookRecord> {
     const record = await downloadBook(await storage, href, trusted)
-    if (!version || record.catalogVersion === version) return record
-    await updateBook(record.id, { catalogVersion: version })
-    return { ...record, catalogVersion: version }
+    const patch: Partial<BookRecord> = {}
+    if (version && record.catalogVersion !== version) patch.catalogVersion = version
+    if (record.catalogUrl !== feedUrl) patch.catalogUrl = feedUrl
+    if (Object.keys(patch).length === 0) return record
+    await updateBook(record.id, patch)
+    return { ...record, ...patch }
   }
 
   // Books downloaded in this session, keyed by entry href: an entry whose
@@ -80,7 +89,7 @@
     busyHref = href
     error = ''
     try {
-      acquired.set(href, await acquire(href, version))
+      acquired.set(href, await acquire(href, version, feedUrl()))
       onacquire()
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
@@ -99,7 +108,7 @@
       const detail = await fetchCatalog(detailHref)
       const epub = detail.entries.find((entry) => entry.kind === 'epub')
       if (!epub) throw new Error(t('No EPUB found for this book.'))
-      acquired.set(detailHref, await acquire(epub.href, epub.version))
+      acquired.set(detailHref, await acquire(epub.href, epub.version, detail.url))
       onacquire()
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
@@ -113,7 +122,7 @@
     busyHref = href
     error = ''
     try {
-      const updated = await acquire(href, version)
+      const updated = await acquire(href, version, feedUrl())
       acquired.set(href, updated)
       onupdate(previous, updated)
     } catch (cause) {
@@ -127,16 +136,9 @@
     return (identifier ? libraryByIdentifier.get(identifier) : undefined) ?? acquired.get(href)
   }
 
-  // A catalog entry offers an update when its version is strictly newer than
-  // both the held copy's dcterms:modified and the catalog version it was
-  // acquired at. Unparseable/absent dates never claim an update.
-  function updatable(version: string | null, held: BookRecord | undefined): boolean {
-    if (!held?.modified || !version) return false
-    const offered = Date.parse(version)
-    const owned = Date.parse(held.modified)
-    const acquiredAt = Date.parse(held.catalogVersion ?? '')
-    if (Number.isNaN(offered) || Number.isNaN(owned)) return false
-    return offered > owned && (Number.isNaN(acquiredAt) || offered > acquiredAt)
+  // The feed on screen, which an entry's book is recorded as listed in.
+  function feedUrl(): string {
+    return feed?.url ?? root
   }
 </script>
 
@@ -174,7 +176,7 @@
             <button disabled={busyHref === entry.href} onclick={() => resolve(entry.href)}>
               {busyHref === entry.href ? t('Downloading…') : t('Download')}
             </button>
-          {:else if held && updatable(entry.version, held)}
+          {:else if held && offersUpdate(entry.version, held)}
             <button
               disabled={busyHref === entry.href}
               onclick={() => update(held, entry.href, entry.version)}
