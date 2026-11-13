@@ -83,7 +83,7 @@ if (existsSync(unitReport)) {
   const report = JSON.parse(readFileSync(unitReport, 'utf8'))
   tests.unit = report.numTotalTests
   tests.unitSkipped = report.numPendingTests + report.numTodoTests
-  tests.unitFiles = report.numTotalTestSuites
+  tests.unitFiles = report.testResults.length
 }
 // Listing is cheap and needs no browser; running e2e is not part of validate.
 if (scripts['test:e2e']) {
