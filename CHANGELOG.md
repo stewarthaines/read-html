@@ -2,6 +2,23 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [0.10.0] — 2026-11-13
+
+### Added
+
+- The contents show the book's cover, title and author, and mark the chapter you are reading.
+- On a wide screen the contents can be pinned beside the book, and stay pinned until you close them.
+- Buttons beside the font size slider make the text larger or smaller one step at a time.
+
+### Changed
+
+- Downloading a book from a catalog no longer opens it; its button turns to Open, so you can download several first.
+- Choosing a chapter leaves the contents open, so you can look through chapters before you start reading.
+
+### Fixed
+
+- A book updated from a catalog no longer keeps offering the same update.
+
 ## [0.9.0] — 2026-11-10
 
 ### Added
