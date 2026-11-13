@@ -60,3 +60,49 @@ test('start screen and reader have no accessibility violations', async ({ page }
   const readerScan = await new AxeBuilder({ page }).analyze()
   expect(readerScan.violations).toEqual([])
 })
+
+// Paging on past either end of the book used to throw inside foliate's page
+// turn and leave its navigation lock held, so every later page turn and
+// contents choice did nothing (vendored foliate patch 10).
+for (const flow of ['Pages', 'Scroll'] as const) {
+  test(`paging past the end of the book in ${flow} mode leaves navigation working`, async ({
+    page,
+  }) => {
+    const section = await openFixture(page)
+    if (flow === 'Scroll') {
+      await page.getByRole('button', { name: 'Settings' }).click()
+      const settings = page.getByRole('dialog', { name: 'Settings' })
+      await settings.getByRole('radio', { name: 'Scroll' }).check()
+      await settings.getByRole('button', { name: 'Close' }).click()
+    }
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+
+    await page.getByRole('button', { name: 'Contents' }).click()
+    const drawer = page.getByRole('dialog', { name: 'Contents' })
+    await drawer.getByRole('button', { name: 'Chapter Three' }).click()
+    await expect(section.getByRole('heading', { name: 'Chapter Three' })).toBeVisible()
+    await drawer.getByRole('button', { name: 'Close' }).click()
+
+    // Well past the last page, then back at the start and past the first.
+    const next = page.getByRole('button', { name: 'Next page' })
+    for (let turn = 0; turn < 12; turn++) {
+      await next.click()
+      await page.waitForTimeout(150)
+    }
+
+    await page.getByRole('button', { name: 'Contents' }).click()
+    await drawer.getByRole('button', { name: 'Chapter One' }).click()
+    await expect(section.getByRole('heading', { name: 'Chapter One' })).toBeVisible()
+    await drawer.getByRole('button', { name: 'Close' }).click()
+    const prev = page.getByRole('button', { name: 'Previous page' })
+    for (let turn = 0; turn < 4; turn++) {
+      await prev.click()
+      await page.waitForTimeout(150)
+    }
+    await page.getByRole('button', { name: 'Contents' }).click()
+    await drawer.getByRole('button', { name: 'Chapter Two' }).click()
+    await expect(section.getByRole('heading', { name: 'Chapter Two' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+}
