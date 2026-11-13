@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { openFixture } from './helpers'
 
 const LONG_TOC = 'fixtures/build/long-toc.epub'
 const LONG_TITLE = 'The Return of Meskhetian Archival Materials to Performing Practice'
@@ -116,4 +117,45 @@ test('the drawer heads with the book and marks the chapter being read', async ({
     'aria-current',
     /.*/,
   )
+})
+
+test('the contents pin beside the book, stay pinned across reloads, and unpin', async ({
+  page,
+}) => {
+  const section = await openFixture(page)
+  await page.getByRole('button', { name: 'Contents' }).click()
+  await page.getByRole('button', { name: 'Pin beside the book' }).click()
+
+  // The drawer gives way to a column beside the book; the toolbar's Contents
+  // button goes while the column is there.
+  const pane = page.getByRole('complementary', { name: 'Contents' })
+  await expect(pane).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Contents' })).not.toBeVisible()
+  await expect(page.getByRole('button', { name: 'Contents' })).toHaveCount(0)
+
+  // Entries navigate and the mark follows, with the book still readable.
+  await pane.getByRole('button', { name: 'Chapter Three' }).click()
+  await expect(section.getByRole('heading', { name: 'Chapter Three' })).toBeVisible()
+  await expect(pane.getByRole('button', { name: 'Chapter Three' })).toHaveAttribute(
+    'aria-current',
+    'true',
+  )
+
+  // A reading mode: still pinned after a reload.
+  await page.reload()
+  await page.getByRole('button', { name: /^Basic LTR/ }).click()
+  await expect(pane).toBeVisible()
+
+  // Closing the column restores the full-width reader and the Contents button.
+  await pane.getByRole('button', { name: 'Close' }).click()
+  await expect(pane).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Contents' })).toBeVisible()
+})
+
+test('a narrow window offers no pin and shows a pinned setting as the drawer', async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 800 })
+  await openFixture(page)
+  await page.getByRole('button', { name: 'Contents' }).click()
+  await expect(page.getByRole('dialog', { name: 'Contents' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pin beside the book' })).toHaveCount(0)
 })

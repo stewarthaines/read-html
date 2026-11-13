@@ -15,13 +15,22 @@ export interface Settings {
   spread: Spread
   fontSize: number
   theme: Theme
+  /** The contents list is pinned beside the book (where there is room)
+   *  rather than opened as a drawer: a reading mode, kept across books. */
+  tocPinned: boolean
 }
 
 export const FONT_SIZE_MIN = 70
 export const FONT_SIZE_MAX = 150
 export const FONT_SIZE_STEP = 10
 
-const DEFAULTS: Settings = { flow: 'paginated', spread: 'auto', fontSize: 100, theme: 'auto' }
+const DEFAULTS: Settings = {
+  flow: 'paginated',
+  spread: 'auto',
+  fontSize: 100,
+  theme: 'auto',
+  tocPinned: false,
+}
 
 function clampFontSize(value: unknown): number {
   const size = Number(value)
@@ -38,6 +47,7 @@ function sanitize(value: unknown): Settings {
     spread: raw.spread === 'single' ? 'single' : DEFAULTS.spread,
     fontSize: clampFontSize(raw.fontSize ?? DEFAULTS.fontSize),
     theme: raw.theme === 'light' || raw.theme === 'dark' ? raw.theme : DEFAULTS.theme,
+    tocPinned: raw.tocPinned === true,
   }
 }
 
@@ -87,6 +97,13 @@ export const settings = {
   },
   set theme(value: Theme) {
     state.theme = value
+    save(state)
+  },
+  get tocPinned() {
+    return state.tocPinned
+  },
+  set tocPinned(value: boolean) {
+    state.tocPinned = value
     save(state)
   },
 }

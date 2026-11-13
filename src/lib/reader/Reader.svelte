@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, type Snippet } from 'svelte'
+  import { MediaQuery } from 'svelte/reactivity'
   import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import { settings, type Spread } from '../settings/index.svelte'
@@ -89,6 +90,10 @@
   const toc = $derived(view?.book.toc ?? [])
   const title = $derived(languageMapText(view?.book.metadata?.title))
   const author = $derived(contributorsText(view?.book.metadata?.author))
+  // Pinning needs room for a readable book beside the column; on a narrower
+  // window a pinned setting waits, and the contents open as the drawer.
+  const wide = new MediaQuery('min-width: 50rem')
+  const pinned = $derived(settings.tocPinned && wide.current)
   // Toolbar paging is logical (§3.3: "next" advances in reading order); only
   // the arrow glyphs are physical, following the book's progression direction.
   const bookIsRtl = $derived(view?.book.dir === 'rtl')
@@ -186,6 +191,18 @@
   function goToEntry(item: TocItem): void {
     if (item.href) view?.goTo(item.href)
   }
+
+  // Pinning moves the contents from the drawer into a column beside the book;
+  // the book re-lays out to the narrower width as on any resize.
+  function pinToc(): void {
+    tocDialog.close()
+    settings.tocPinned = true
+  }
+
+  // Brings the current entry into view once, when the pinned column appears.
+  function showCurrent(pane: HTMLElement): void {
+    pane.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'center' })
+  }
 </script>
 
 {#snippet tocEntries(items: TocItem[])}
@@ -208,12 +225,49 @@
   </ul>
 {/snippet}
 
+{#snippet tocPanel(controls: Snippet)}
+  <header class="toc-head">
+    {#if coverUrl}
+      <img class="toc-cover" src={coverUrl} alt="" />
+    {/if}
+    <div class="toc-book">
+      <p class="toc-title">{title}</p>
+      {#if author}
+        <p class="toc-author">{author}</p>
+      {/if}
+    </div>
+    {@render controls()}
+  </header>
+  {#if toc.length > 0}
+    <nav>
+      {@render tocEntries(toc)}
+    </nav>
+  {:else}
+    <p>{t('This book has no table of contents.')}</p>
+  {/if}
+{/snippet}
+
+{#snippet pinIcon()}
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+    <path
+      d="M5.5 1.5h5M6.5 1.5v4.5L4 9h8L9.5 6V1.5M8 9v5.5"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.4"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+{/snippet}
+
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="reader">
   <header class="toolbar">
     <button onclick={onclose} aria-label={t('Library')} title={t('Library')}>←</button>
-    <button onclick={openToc} aria-label={t('Contents')} title={t('Contents')}>☰</button>
+    {#if !pinned}
+      <button onclick={openToc} aria-label={t('Contents')} title={t('Contents')}>☰</button>
+    {/if}
     <h1>{title}</h1>
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
@@ -225,12 +279,26 @@
       >{bookIsRtl ? '‹' : '›'}</button
     >
   </header>
-  <main aria-label={t('Book')}>
-    {#if error}
-      <p role="alert">{error}</p>
+  <div class="body">
+    {#if pinned}
+      <aside class="toc toc-pane" aria-label={t('Contents')} {@attach showCurrent}>
+        {#snippet paneControls()}
+          <button
+            onclick={() => (settings.tocPinned = false)}
+            aria-label={t('Close')}
+            title={t('Close')}>✕</button
+          >
+        {/snippet}
+        {@render tocPanel(paneControls)}
+      </aside>
     {/if}
-    <div class="view" bind:this={container}></div>
-  </main>
+    <main aria-label={t('Book')}>
+      {#if error}
+        <p role="alert">{error}</p>
+      {/if}
+      <div class="view" bind:this={container}></div>
+    </main>
+  </div>
 </div>
 
 <SettingsDialog
@@ -261,25 +329,17 @@
 </dialog>
 
 <dialog bind:this={tocDialog} class="toc" aria-label={t('Contents')} use:backdropClose>
-  <header class="toc-head">
-    {#if coverUrl}
-      <img class="toc-cover" src={coverUrl} alt="" />
+  {#snippet drawerControls()}
+    {#if wide.current}
+      <button
+        onclick={pinToc}
+        aria-label={t('Pin beside the book')}
+        title={t('Pin beside the book')}>{@render pinIcon()}</button
+      >
     {/if}
-    <div class="toc-book">
-      <p class="toc-title">{title}</p>
-      {#if author}
-        <p class="toc-author">{author}</p>
-      {/if}
-    </div>
     <button onclick={() => tocDialog.close()} aria-label={t('Close')} title={t('Close')}>✕</button>
-  </header>
-  {#if toc.length > 0}
-    <nav>
-      {@render tocEntries(toc)}
-    </nav>
-  {:else}
-    <p>{t('This book has no table of contents.')}</p>
-  {/if}
+  {/snippet}
+  {@render tocPanel(drawerControls)}
 </dialog>
 
 <style>
@@ -313,8 +373,31 @@
     min-inline-size: 2rem;
   }
 
+  /* The book, with the pinned contents column beside it when there is one. */
+  .body {
+    flex: 1;
+    min-block-size: 0;
+    display: flex;
+  }
+
+  .toc-pane {
+    flex: none;
+    box-sizing: border-box;
+    inline-size: 20rem;
+    overflow-y: auto;
+    padding-inline: 1rem;
+    border-inline-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  }
+
+  .toc-head button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   main {
     flex: 1;
+    min-inline-size: 0;
     min-block-size: 0;
     display: flex;
     flex-direction: column;
@@ -370,13 +453,13 @@
     padding-block-start: 0;
   }
 
-  dialog.toc ul {
+  .toc ul {
     list-style: none;
     padding-inline-start: 1rem;
     margin: 0.25rem 0;
   }
 
-  dialog.toc nav > ul {
+  .toc nav > ul {
     padding-inline-start: 0;
   }
 
@@ -426,8 +509,8 @@
     min-inline-size: 2rem;
   }
 
-  dialog.toc nav button,
-  dialog.toc li > span {
+  .toc nav button,
+  .toc li > span {
     display: block;
     inline-size: 100%;
     text-align: start;
@@ -436,13 +519,13 @@
   }
 
   /* Each entry is a roomy row with a hairline rule beneath it. */
-  dialog.toc nav button,
-  dialog.toc li > span {
+  .toc nav button,
+  .toc li > span {
     padding: 0.75rem 0.5rem;
     border-block-end: 1px solid color-mix(in srgb, CanvasText 12%, Canvas);
   }
 
-  dialog.toc nav button {
+  .toc nav button {
     background: none;
     border-inline: none;
     border-block-start: none;
@@ -451,12 +534,12 @@
     font: inherit;
   }
 
-  dialog.toc nav button:hover {
+  .toc nav button:hover {
     background: color-mix(in srgb, CanvasText 6%, Canvas);
   }
 
   /* The chapter being read: tinted and bolder, so it reads without colour. */
-  dialog.toc nav button[aria-current='true'] {
+  .toc nav button[aria-current='true'] {
     background: color-mix(in srgb, CanvasText 10%, Canvas);
     font-weight: 600;
   }

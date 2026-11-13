@@ -18,6 +18,16 @@ test('defaults: paginated flow, auto columns, 100% font size, auto theme', () =>
   expect(settings.spread).toBe('auto')
   expect(settings.fontSize).toBe(100)
   expect(settings.theme).toBe('auto')
+  expect(settings.tocPinned).toBe(false)
+})
+
+test('a pinned contents list persists; anything but true reads as unpinned', () => {
+  settings.tocPinned = true
+  reloadSettings()
+  expect(settings.tocPinned).toBe(true)
+  localStorage.setItem(LS_SETTINGS, JSON.stringify({ tocPinned: 'yes' }))
+  reloadSettings()
+  expect(settings.tocPinned).toBe(false)
 })
 
 test('setters persist to localStorage under the readhtml key', () => {
@@ -26,7 +36,13 @@ test('setters persist to localStorage under the readhtml key', () => {
   settings.fontSize = 130
   settings.theme = 'dark'
   const stored = JSON.parse(localStorage.getItem(LS_SETTINGS) ?? '{}')
-  expect(stored).toEqual({ flow: 'scrolled', spread: 'single', fontSize: 130, theme: 'dark' })
+  expect(stored).toEqual({
+    flow: 'scrolled',
+    spread: 'single',
+    fontSize: 130,
+    theme: 'dark',
+    tocPinned: false,
+  })
 })
 
 test('reloadSettings picks up stored values', () => {
