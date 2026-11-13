@@ -77,3 +77,45 @@ test('a TOC taller than the viewport scrolls to its last entry', async ({ page }
   expect(lastBox!.y).toBeGreaterThanOrEqual(drawerBox!.y - 0.5)
   expect(lastBox!.y + lastBox!.height).toBeLessThanOrEqual(drawerBox!.y + drawerBox!.height + 0.5)
 })
+
+test('the drawer heads with the book and marks the chapter being read', async ({ page }) => {
+  await page.goto('/')
+  await page.setInputFiles('input[type=file]', 'fixtures/build/basic-ltr.epub')
+  await expect(
+    page.frameLocator('iframe[title="Book content"]').getByRole('heading', { level: 1 }).first(),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Contents' }).click()
+  const drawer = page.getByRole('dialog', { name: 'Contents' })
+  await expect(drawer).toBeVisible()
+
+  // The book's cover, title and author head the drawer.
+  await expect(drawer.locator('.toc-head img')).toBeVisible()
+  await expect(drawer.getByText('Basic LTR', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('Fixture Author', { exact: true })).toBeVisible()
+
+  // The opening chapter is the current one, and only it.
+  await expect(drawer.getByRole('button', { name: 'Chapter One' })).toHaveAttribute(
+    'aria-current',
+    'true',
+  )
+  await expect(drawer.locator('[aria-current="true"]')).toHaveCount(1)
+
+  // Navigate to chapter three; reopened, the drawer marks it instead.
+  await drawer.getByRole('button', { name: 'Chapter Three' }).click()
+  await expect(drawer).not.toBeVisible()
+  await expect(
+    page
+      .frameLocator('iframe[title="Book content"]')
+      .getByRole('heading', { name: 'Chapter Three' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Contents' }).click()
+  await expect(drawer.getByRole('button', { name: 'Chapter Three' })).toHaveAttribute(
+    'aria-current',
+    'true',
+  )
+  await expect(drawer.getByRole('button', { name: 'Chapter One' })).not.toHaveAttribute(
+    'aria-current',
+    /.*/,
+  )
+})

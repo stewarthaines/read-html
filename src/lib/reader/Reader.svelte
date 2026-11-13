@@ -6,7 +6,14 @@
   import { bookContentCss } from '../theme/book'
   import { decideScripting } from '../scripting/consent'
   import { backdropClose } from '../ui/backdrop.svelte'
-  import { bookIsScripted, openBook, type FoliateViewElement, type TocItem } from './foliate'
+  import {
+    bookIsScripted,
+    contributorsText,
+    languageMapText,
+    openBook,
+    type FoliateViewElement,
+    type TocItem,
+  } from './foliate'
   import { keyIsClaimed } from './keys'
 
   interface Props {
@@ -46,6 +53,10 @@
   let error = $state('')
   // Only a scripted book has anything to trust, so only it gets the toggle.
   let scripted = $state(false)
+  // The TOC entry the reading position falls under, marked in the drawer.
+  let currentTocItem = $state.raw<TocItem | null>(null)
+  // The book's own cover, shown at the head of the contents drawer.
+  let coverUrl = $state('')
 
   // Reading-comfort settings apply live (§3.5): flow via the renderer's
   // observed attribute, font size and theme via injected section CSS.
@@ -76,10 +87,8 @@
   }
 
   const toc = $derived(view?.book.toc ?? [])
-  const title = $derived.by(() => {
-    const raw = view?.book.metadata?.title
-    return typeof raw === 'string' ? raw : ''
-  })
+  const title = $derived(languageMapText(view?.book.metadata?.title))
+  const author = $derived(contributorsText(view?.book.metadata?.author))
   // Toolbar paging is logical (§3.3: "next" advances in reading order); only
   // the arrow glyphs are physical, following the book's progression direction.
   const bookIsRtl = $derived(view?.book.dir === 'rtl')
@@ -96,11 +105,17 @@
       styles: bookContentCss(settings),
       allowScripts: scriptingConsent === true,
       onSectionLoad: handleSectionLoad,
-      onRelocate: onrelocate,
+      onRelocate: (location) => {
+        currentTocItem = location.tocItem ?? null
+        onrelocate({ cfi: location.cfi, fraction: location.fraction })
+      },
     })
       .then((opened) => {
         view = opened
         disposed = opened
+        void opened.book.getCover?.().then((cover) => {
+          if (cover && disposed === opened) coverUrl = URL.createObjectURL(cover)
+        })
         // §3.4 step 3: a scripted book with no recorded answer renders
         // stripped (that already happened) and asks once.
         scripted = bookIsScripted(opened.book)
@@ -114,6 +129,8 @@
     return () => {
       disposed?.close()
       disposed?.remove()
+      disposed = undefined
+      if (coverUrl) URL.revokeObjectURL(coverUrl)
     }
   })
 
@@ -157,6 +174,13 @@
     event.preventDefault()
   }
 
+  // Opens the drawer with the current chapter's entry in view, so a long
+  // contents list starts where the reader is.
+  function openToc(): void {
+    tocDialog.showModal()
+    tocDialog.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'center' })
+  }
+
   function goToEntry(item: TocItem): void {
     if (item.href) view?.goTo(item.href)
     tocDialog.close()
@@ -168,7 +192,10 @@
     {#each items as item (item)}
       <li>
         {#if item.href}
-          <button onclick={() => goToEntry(item)}>{item.label}</button>
+          <button
+            onclick={() => goToEntry(item)}
+            aria-current={item === currentTocItem ? 'true' : undefined}>{item.label}</button
+          >
         {:else}
           <span>{item.label}</span>
         {/if}
@@ -185,9 +212,7 @@
 <div class="reader">
   <header class="toolbar">
     <button onclick={onclose} aria-label={t('Library')} title={t('Library')}>←</button>
-    <button onclick={() => tocDialog.showModal()} aria-label={t('Contents')} title={t('Contents')}
-      >☰</button
-    >
+    <button onclick={openToc} aria-label={t('Contents')} title={t('Contents')}>☰</button>
     <h1>{title}</h1>
     <button onclick={() => settingsDialog.open()} aria-label={t('Settings')} title={t('Settings')}
       >⚙</button
@@ -236,6 +261,15 @@
 
 <dialog bind:this={tocDialog} class="toc" aria-label={t('Contents')} use:backdropClose>
   <header class="toc-head">
+    {#if coverUrl}
+      <img class="toc-cover" src={coverUrl} alt="" />
+    {/if}
+    <div class="toc-book">
+      <p class="toc-title">{title}</p>
+      {#if author}
+        <p class="toc-author">{author}</p>
+      {/if}
+    </div>
     <button onclick={() => tocDialog.close()} aria-label={t('Close')} title={t('Close')}>✕</button>
   </header>
   {#if toc.length > 0}
@@ -330,6 +364,9 @@
     inline-size: 22rem;
     max-inline-size: 85vw;
     overflow-y: auto;
+    /* No top padding: the sticky header carries it, or entries scrolling
+       up show through the padding strip above the header. */
+    padding-block-start: 0;
   }
 
   dialog.toc ul {
@@ -342,14 +379,45 @@
     padding-inline-start: 0;
   }
 
-  /* Sticky close header so it stays reachable while the list scrolls. */
+  /* Sticky book header (cover, title, close) so the close button stays
+     reachable while the list scrolls. */
   .toc-head {
     display: flex;
-    justify-content: end;
+    align-items: start;
+    gap: 0.75rem;
     position: sticky;
     inset-block-start: 0;
     background: Canvas;
-    padding-block-end: 0.25rem;
+    padding-block: 1rem 0.75rem;
+    border-block-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  }
+
+  .toc-cover {
+    inline-size: 3rem;
+    block-size: auto;
+    max-block-size: 4.5rem;
+    object-fit: contain;
+    box-shadow: 0 1px 3px color-mix(in srgb, CanvasText 30%, transparent);
+  }
+
+  .toc-book {
+    flex: 1;
+    min-inline-size: 0;
+    align-self: center;
+  }
+
+  .toc-book p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .toc-title {
+    font-weight: 600;
+  }
+
+  .toc-author {
+    font-size: 0.875rem;
+    color: color-mix(in srgb, CanvasText 65%, Canvas);
   }
 
   .toc-head button {
@@ -366,13 +434,29 @@
     overflow-wrap: anywhere;
   }
 
+  /* Each entry is a roomy row with a hairline rule beneath it. */
+  dialog.toc nav button,
+  dialog.toc li > span {
+    padding: 0.75rem 0.5rem;
+    border-block-end: 1px solid color-mix(in srgb, CanvasText 12%, Canvas);
+  }
+
   dialog.toc nav button {
     background: none;
-    border: none;
-    color: LinkText;
-    text-decoration: underline;
+    border-inline: none;
+    border-block-start: none;
+    color: CanvasText;
     cursor: pointer;
-    padding: 0.25rem 0;
     font: inherit;
+  }
+
+  dialog.toc nav button:hover {
+    background: color-mix(in srgb, CanvasText 6%, Canvas);
+  }
+
+  /* The chapter being read: tinted and bolder, so it reads without colour. */
+  dialog.toc nav button[aria-current='true'] {
+    background: color-mix(in srgb, CanvasText 10%, Canvas);
+    font-weight: 600;
   }
 </style>

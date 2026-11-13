@@ -49,6 +49,9 @@ export function bookIsScripted(book: FoliateBook): boolean {
 interface Relocation {
   fraction: number
   cfi: string
+  /** The TOC entry the position falls under — one of `book.toc`'s own
+   *  objects — or null/undefined where the book has none. */
+  tocItem?: TocItem | null
 }
 
 interface SectionLoadDetail {
@@ -112,7 +115,7 @@ function attachMarkupTransform(
 
 // EPUB metadata values may be language maps ({lang: text}) rather than
 // strings; contributors are objects with a `name` language map.
-function languageMapText(value: unknown): string {
+export function languageMapText(value: unknown): string {
   if (typeof value === 'string') return value
   if (value && typeof value === 'object') {
     const first = Object.values(value)[0] as unknown
@@ -121,7 +124,7 @@ function languageMapText(value: unknown): string {
   return ''
 }
 
-function contributorsText(value: unknown): string {
+export function contributorsText(value: unknown): string {
   const list = Array.isArray(value) ? value : value ? [value] : []
   return list
     .map((entry) => languageMapText((entry as { name?: unknown })?.name ?? entry))
@@ -222,8 +225,8 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
     options.onSectionLoad((event as CustomEvent<SectionLoadDetail>).detail.doc)
   })
   view.addEventListener('relocate', (event) => {
-    const { cfi, fraction } = (event as CustomEvent<Relocation>).detail
-    options.onRelocate({ cfi, fraction })
+    const { cfi, fraction, tocItem } = (event as CustomEvent<Relocation>).detail
+    options.onRelocate({ cfi, fraction, tocItem })
   })
   options.container.append(view)
   await view.open(book)
