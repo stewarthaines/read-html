@@ -5,3 +5,4 @@ fixtures/build/
 test-results/
 playwright-report/
 package-lock.json
+.claude/
