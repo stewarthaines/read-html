@@ -2,6 +2,12 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- A book link can open at a chapter, section or picture: add `#chapter` or `#chapter/id` to a `?book=` link, and if the place is not in the book the reader says so.
+
 ## [0.11.0] — 2026-11-13
 
 ### Added

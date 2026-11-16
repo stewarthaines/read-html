@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, type Snippet } from 'svelte'
+  import { onMount, untrack, type Snippet } from 'svelte'
   import { MediaQuery } from 'svelte/reactivity'
   import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
@@ -10,12 +10,14 @@
   import {
     bookIsScripted,
     contributorsText,
+    goToPlace,
     languageMapText,
     openBook,
     type FoliateViewElement,
     type TocItem,
   } from './foliate'
   import { keyIsClaimed } from './keys'
+  import type { PlaceLink } from './place-link'
 
   interface Props {
     file: Blob
@@ -25,6 +27,11 @@
     /** Book-level fraction to open at when there is no position: an updated
      *  book reopens about where it was. */
     startFraction?: number
+    /** The place the opening link names; wins over `initialPosition` when
+     *  the book has it (docs/SPEC.md, place links). */
+    place?: PlaceLink | null
+    /** A place named while the book is open (a new link's fragment): go there. */
+    jump?: PlaceLink | null
     /** Recorded scripting consent from the book's metadata record (§3.4). */
     scriptingConsent?: boolean | undefined
     /** The URL this book was fetched from (`?book=`), offered to the editor. */
@@ -43,6 +50,8 @@
     bookId,
     initialPosition = null,
     startFraction = undefined,
+    place = null,
+    jump = null,
     scriptingConsent = undefined,
     sourceUrl = null,
     trustEditable = true,
@@ -65,6 +74,21 @@
   let currentTocItem = $state.raw<TocItem | null>(null)
   // The book's own cover, shown at the head of the contents drawer.
   let coverUrl = $state('')
+  // A link named a place the book does not have; said once, until dismissed.
+  let placeMissing = $state(false)
+
+  // A place named while the book is open moves there without reopening.
+  $effect(() => {
+    const target = jump
+    const opened = view
+    if (!target || !opened) return
+    untrack(() => {
+      placeMissing = false
+      void goToPlace(opened, target).then((found) => {
+        placeMissing = !found
+      })
+    })
+  })
 
   // Reading-comfort settings apply live (§3.5): flow via the renderer's
   // observed attribute, font size and theme via injected section CSS.
@@ -112,6 +136,8 @@
       bookId,
       container,
       lastLocation: initialPosition,
+      place,
+      onPlaceMissing: () => (placeMissing = true),
       startFraction,
       flow: settings.flow,
       maxColumnCount: columnCap(settings.spread),
@@ -307,6 +333,14 @@
       {#if error}
         <p role="alert">{error}</p>
       {/if}
+      {#if placeMissing}
+        <p role="status" class="place-note">
+          {t('The place this link points to was not found in this book.')}
+          <button onclick={() => (placeMissing = false)} aria-label={t('Close')} title={t('Close')}
+            >✕</button
+          >
+        </p>
+      {/if}
       <div class="view" bind:this={container}></div>
     </main>
   </div>
@@ -366,6 +400,16 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.25rem 0.5rem;
+    border-block-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  }
+
+  .place-note {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.25rem 1rem;
     border-block-end: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
   }
 

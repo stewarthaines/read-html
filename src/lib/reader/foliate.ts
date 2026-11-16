@@ -6,6 +6,7 @@ import { makeBook } from '../../../vendor/foliate-js/view.js'
 import { rewriteDataSrcMarkup } from '../scripting/data-src'
 import { STRIPPABLE_TYPES, stripScripts } from '../scripting/strip'
 import { isBookServingAvailable, servedSectionUrl, startBookServer } from './book-server'
+import { resolvePlace, type PlaceLink } from './place-link'
 
 export interface TocItem {
   label: string
@@ -26,7 +27,7 @@ interface FoliateBook {
   transformTarget: EventTarget
   getCover?: () => Promise<Blob | null>
   /** `servedURL` is set by the reader where the book is served (vendored patch 8). */
-  sections?: { id: string; servedURL?: string }[]
+  sections?: { id: string; servedURL?: string; createDocument?: () => Promise<Document> }[]
   resources?: {
     spine?: { properties?: string[] }[]
     manifest?: ManifestItem[]
@@ -72,6 +73,8 @@ export interface FoliateViewElement extends HTMLElement {
   open(book: FoliateBook): Promise<void>
   init(options: { lastLocation?: string; showTextStart?: boolean }): Promise<void>
   goTo(target: string | number): Promise<unknown>
+  /** Where a CFI or href points, without going there; undefined if nowhere. */
+  resolveNavigation(target: string): { index: number } | undefined
   goToFraction(fraction: number): Promise<unknown>
   goLeft(): Promise<unknown>
   goRight(): Promise<unknown>
@@ -180,6 +183,12 @@ export interface OpenBookOptions {
   container: HTMLElement
   /** EPUB CFI to restore; omit to start from the beginning. */
   lastLocation?: string | null
+  /** A place named by the link the book was opened from; it wins over
+   *  `lastLocation` when the book has it (docs/SPEC.md, place links). */
+  place?: PlaceLink | null
+  /** Called when `place` names nowhere in the book; the book then opens as
+   *  it would have without it. */
+  onPlaceMissing?: () => void
   /** Book-level fraction (0..1) to open at when there is no CFI to restore:
    *  an updated book, whose old CFI may not survive the edits. */
   startFraction?: number
@@ -239,7 +248,18 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
   if (options.flow) view.renderer.setAttribute('flow', options.flow)
   if (options.maxColumnCount) view.renderer.setAttribute('max-column-count', options.maxColumnCount)
   if (options.styles) view.renderer.setStyles?.(options.styles)
-  await view.init({ lastLocation: options.lastLocation ?? undefined })
-  if (!options.lastLocation && options.startFraction) await view.goToFraction(options.startFraction)
+  const placeTarget = options.place ? await resolvePlace(view, options.place) : null
+  if (options.place && placeTarget === null) options.onPlaceMissing?.()
+  const start = placeTarget ?? options.lastLocation ?? undefined
+  await view.init({ lastLocation: start })
+  if (!start && options.startFraction) await view.goToFraction(options.startFraction)
   return view
+}
+
+/** Go to a place in the open book; false when the book has no such place. */
+export async function goToPlace(view: FoliateViewElement, place: PlaceLink): Promise<boolean> {
+  const target = await resolvePlace(view, place)
+  if (target === null) return false
+  await view.goTo(target)
+  return true
 }

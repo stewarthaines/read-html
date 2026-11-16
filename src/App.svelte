@@ -12,6 +12,7 @@
   import Library from './lib/library/Library.svelte'
   import { importBook } from './lib/library/import'
   import Reader from './lib/reader/Reader.svelte'
+  import { parsePlaceFragment, type PlaceLink } from './lib/reader/place-link'
   import { readEmbeddedPayload } from './lib/payload'
   import { createBookStorage } from './lib/storage/index'
   import { sha256Hex } from './lib/storage/hash'
@@ -41,12 +42,16 @@
     sourceUrl?: string
     /** Embedded-payload book: session trust, dedicated position key. */
     embedded?: boolean
+    /** The place the opening `?book=` link's fragment names. */
+    place?: PlaceLink | null
   }
 
   const storage = createBookStorage()
 
   let books = $state<BookRecord[]>([])
   let current = $state<OpenedBook>()
+  // A place named by a new fragment while a book is open (hashchange).
+  let jump = $state.raw<PlaceLink | null>(null)
   // Deep-linked catalog (?catalog=), browsed by the library's sources pane.
   let initialCatalogUrl = $state<string | null>(null)
   let error = $state('')
@@ -93,7 +98,8 @@
     const bookUrl = params.get('book')
     const catalogUrl = params.get('catalog')
     if (catalogUrl && !bookUrl) showAddress(undefined)
-    if (bookUrl) void openFromUrl(bookUrl)
+    // The fragment is read before opening drops it from the address.
+    if (bookUrl) void openFromUrl(bookUrl, parsePlaceFragment(location.hash))
     else if (catalogUrl) initialCatalogUrl = catalogUrl
   })
 
@@ -170,7 +176,7 @@
     }
   }
 
-  async function handleOpen(listed: BookRecord): Promise<void> {
+  async function handleOpen(listed: BookRecord, place: PlaceLink | null = null): Promise<void> {
     error = ''
     // Re-read the record: consent may have changed in settings since the
     // library list was loaded.
@@ -186,6 +192,7 @@
     // A consumed deep link must not re-open the catalog when the reader closes.
     initialCatalogUrl = null
     showAddress(record.sourceUrl)
+    jump = null
     current = {
       id: record.id,
       file,
@@ -193,17 +200,18 @@
       scriptingConsent: record.scriptingConsent,
       downloadName: downloadFileName(record),
       sourceUrl: record.sourceUrl,
+      place,
     }
   }
 
   // A `?book=` link opens the stored copy it already brought in, if any (no
   // download, works offline); otherwise it downloads with progress showing.
-  async function openFromUrl(url: string): Promise<void> {
+  async function openFromUrl(url: string, place: PlaceLink | null = null): Promise<void> {
     error = ''
     try {
       const stored = await findBookBySource(url)
       if (stored) {
-        await handleOpen(stored)
+        await handleOpen(stored, place)
         return
       }
       progress = t('Downloading the book…')
@@ -211,13 +219,22 @@
         progress = describeProgress(step)
       })
       progress = t('Opening the book…')
-      await handleOpen(record)
+      await handleOpen(record, place)
     } catch (cause) {
       showAddress(undefined)
       error = cause instanceof Error ? cause.message : String(cause)
     } finally {
       progress = ''
     }
+  }
+
+  // A link differing only after `#` (pasted while its book is open) moves to
+  // that place without reopening; the fragment is then dropped again.
+  function handleHashChange(): void {
+    const place = parsePlaceFragment(location.hash)
+    if (!place || !current?.sourceUrl) return
+    jump = place
+    showAddress(current.sourceUrl)
   }
 
   function handleDrop(event: DragEvent): void {
@@ -359,6 +376,8 @@
         ...current,
         position: lastCfi ?? current.position,
         scriptingConsent: granted,
+        // The link's place counted on the first open only.
+        place: null,
       }
     } else {
       current.scriptingConsent = granted
@@ -375,7 +394,11 @@
   }
 </script>
 
-<svelte:window ondragover={(event) => event.preventDefault()} ondrop={handleDrop} />
+<svelte:window
+  ondragover={(event) => event.preventDefault()}
+  ondrop={handleDrop}
+  onhashchange={handleHashChange}
+/>
 
 {#if current}
   {#key current}
@@ -384,6 +407,8 @@
       bookId={current.id}
       initialPosition={current.position}
       startFraction={current.startFraction}
+      place={current.place ?? null}
+      {jump}
       scriptingConsent={current.scriptingConsent}
       sourceUrl={current.sourceUrl}
       trustEditable={!current.embedded}

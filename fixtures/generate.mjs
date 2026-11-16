@@ -115,7 +115,7 @@ const PARAGRAPH_BODY_AR =
 /**
  * @param {string} title
  * @param {number} paragraphCount
- * @param {{ htmlAttrs?: string, paragraphText?: (i: number) => string }} [options]
+ * @param {{ htmlAttrs?: string, paragraphText?: (i: number) => string, paragraphIds?: boolean }} [options]
  */
 function chapterXhtml(title, paragraphCount, options = {}) {
   const htmlAttrs = options.htmlAttrs ?? ''
@@ -125,7 +125,8 @@ function chapterXhtml(title, paragraphCount, options = {}) {
   /** @type {string[]} */
   const paragraphs = []
   for (let i = 1; i <= paragraphCount; i++) {
-    paragraphs.push(`    <p>${paragraphText(i)}</p>`)
+    const id = options.paragraphIds ? ` id="p${i}"` : ''
+    paragraphs.push(`    <p${id}>${paragraphText(i)}</p>`)
   }
   return `<?xml version="1.0" encoding="utf-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml"${htmlAttrs}>
@@ -281,7 +282,8 @@ function basicLtr() {
       { name: 'OEBPS/cover.svg', data: coverSvg(title, '#335577') },
       ...chapters.map((chapter) => ({
         name: `OEBPS/${chapter.file}`,
-        data: chapterXhtml(chapter.title, 16),
+        // Paragraph ids (p1…p16) are what place links (#chapter2/p12) point at.
+        data: chapterXhtml(chapter.title, 16, { paragraphIds: true }),
       })),
     ],
   }
