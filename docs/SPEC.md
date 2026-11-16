@@ -2,6 +2,23 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## Links to a place in a book (post-0.11)
+
+A `?book=` link can carry a fragment naming a place in the book, so a link written in an email opens at a chapter, a section or a figure. Links are written by hand for now; no control in READ.html or SEED.html creates them (a later feature).
+
+Why this shape: a link names the book's own ids, not a reading position, because books shared as living copies are updated and a position stops matching when the text shifts. The short form is EPUB's own internal href (`wells_research.xhtml#letter`) shortened and written without a second `#`, so it fits in a URL fragment and can be read and typed. EPUB CFI is the standard for an exact spot in one edition (bookmarks, highlights, the saved position); its chapter step is the spine position, and foliate only uses an id for that step when the spine entry has one, which SEED.html's do not, so a chapter inserted in a new edition sends every later CFI to the wrong chapter. A CFI is still accepted, since foliate parses it already. Other schemes considered: Readium Locators (href plus fragment, in JSON, not a URL), Text Fragments (quote-based, browsers apply them only to top-level pages), Web Annotation selectors (barely implemented as IRIs), Media Fragments (media and image regions, not document places).
+
+Accepted when (e2e: `e2e/place-links.spec.ts`; unit: `tests/place-link.test.ts`):
+
+- Three fragment forms are read from a `?book=` link: `#<chapter>` opens at the start of that chapter; `#<chapter>/<element-id>` opens at the element with that id in that chapter (a heading, a section, a figure, anything with an id); `#epubcfi(…)` opens at that CFI. Fragment parts are percent-decoded once.
+- `<chapter>` is a spine item's file name without its extension, matched in whatever folder the file sits in. A name that matches no spine item, or more than one (same file name in different folders), is not found. An element id is looked up only within the named chapter.
+- The link's place wins over the saved reading position on that open, including when the `?book=` URL matches a stored book (which opens with no download, as before). From there, the position is saved as usual.
+- A place that is not found (unknown chapter, ambiguous name, unknown id, unresolvable CFI) opens the book where it would have opened without the fragment, and a short note says the linked place was not found. Nothing silently lands somewhere else.
+- A new fragment while the same book is open (a pasted link differing only after `#`, a `hashchange`) moves to that place without reloading the book.
+- Once used, the fragment is dropped from the address, leaving `?book=<source URL>` as before (`history.replaceState`), so a reload reopens at the reader's current position rather than back at the link.
+- A fragment on a link that fails to open the book changes nothing about the existing failure (bare address, error shown).
+- Out of scope: fragments without `?book=` (library opens, picker, embedded payload), and any interface for copying a link.
+
 ## Deep links keep their address, with progress (post-0.7)
 
 Accepted when (e2e: `e2e/catalog.spec.ts`; unit: `tests/fetch-progress.test.ts`):
