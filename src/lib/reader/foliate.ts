@@ -27,7 +27,13 @@ interface FoliateBook {
   transformTarget: EventTarget
   getCover?: () => Promise<Blob | null>
   /** `servedURL` is set by the reader where the book is served (vendored patch 8). */
-  sections?: { id: string; servedURL?: string; createDocument?: () => Promise<Document> }[]
+  sections?: {
+    id: string
+    /** The spine itemref's `linear`; 'no' for a chapter outside the reading order. */
+    linear?: string
+    servedURL?: string
+    createDocument?: () => Promise<Document>
+  }[]
   resources?: {
     spine?: { properties?: string[] }[]
     manifest?: ManifestItem[]
@@ -53,6 +59,15 @@ interface Relocation {
   /** The TOC entry the position falls under — one of `book.toc`'s own
    *  objects — or null/undefined where the book has none. */
   tocItem?: TocItem | null
+  /** The section shown: `current` is its index in `book.sections`. */
+  section?: { current: number }
+}
+
+/** The view's own record of moves (links and contents jumps; paging replaces
+ *  the current step rather than adding one). */
+interface ViewHistory extends EventTarget {
+  readonly canGoBack: boolean
+  back(): void
 }
 
 interface SectionLoadDetail {
@@ -63,6 +78,7 @@ interface SectionLoadDetail {
 export interface FoliateViewElement extends HTMLElement {
   book: FoliateBook
   lastLocation?: Relocation
+  history: ViewHistory
   /** The paginator (or fixed-layout) element; supports the `flow` attribute
    *  and per-section user-style injection. */
   // render() re-runs the paginator's layout. Attributes that resize the
@@ -238,8 +254,8 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
     options.onSectionLoad((event as CustomEvent<SectionLoadDetail>).detail.doc)
   })
   view.addEventListener('relocate', (event) => {
-    const { cfi, fraction, tocItem } = (event as CustomEvent<Relocation>).detail
-    options.onRelocate({ cfi, fraction, tocItem })
+    const { cfi, fraction, tocItem, section } = (event as CustomEvent<Relocation>).detail
+    options.onRelocate({ cfi, fraction, tocItem: unlistedSection(view, section) ? null : tocItem })
   })
   options.container.append(view)
   await view.open(book)
@@ -254,6 +270,22 @@ export async function openBook(options: OpenBookOptions): Promise<FoliateViewEle
   await view.init({ lastLocation: start })
   if (!start && options.startFraction) await view.goToFraction(options.startFraction)
   return view
+}
+
+/** Whether the section shown is outside the reading order and has no contents
+ *  entry of its own: foliate then reports the entry before it, which the
+ *  reader is not in (docs/SPEC.md, "Back to where you were"). */
+function unlistedSection(view: FoliateViewElement, section?: { current: number }): boolean {
+  if (section === undefined) return false
+  const index = section.current
+  if (view.book.sections?.[index]?.linear !== 'no') return false
+  const listed = (items: TocItem[]): boolean =>
+    items.some(
+      (item) =>
+        (item.href !== undefined && view.resolveNavigation(item.href)?.index === index) ||
+        listed(item.subitems ?? []),
+    )
+  return !listed(view.book.toc ?? [])
 }
 
 /** Go to a place in the open book; false when the book has no such place. */

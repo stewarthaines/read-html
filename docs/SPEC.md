@@ -2,6 +2,16 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## Back to where you were, and non-linear chapters (post-0.11)
+
+A link in the text can lead into a chapter outside the reading order (a notes or research chapter, `linear="no"`), which usually has no contents entry and no link back. The reader needs one plain way back, and the contents should not claim the reader is in a chapter they are not.
+
+Accepted when (e2e: `e2e/back.spec.ts`):
+
+- Following a link in the book, or choosing a contents entry, offers a Back button in the toolbar. Back returns to the page the reader was on before that move (paging since then does not add steps), and each further Back undoes one earlier move. With nothing to go back to, the button is not shown. Opening a book, paging and a place link's own opening position add no step.
+- While a non-linear chapter that has no contents entry of its own is shown, no contents entry is marked current. A non-linear chapter with its own entry marks that entry as usual, and linear chapters are unchanged.
+- Out of scope: a Forward button, and tying these steps to the browser's own Back, which belongs to the catalog (see "A catalog keeps its address").
+
 ## Contents pinned by default on a wide screen (post-0.11)
 
 A first-time reader on a wide screen sees the book's contents beside it, without finding the pin. Pinning stays a reading mode the reader can turn off, kept across books.

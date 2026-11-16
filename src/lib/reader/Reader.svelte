@@ -76,6 +76,9 @@
   let coverUrl = $state('')
   // A link named a place the book does not have; said once, until dismissed.
   let placeMissing = $state(false)
+  // Whether a link or contents jump can be undone (docs/SPEC.md, "Back to
+  // where you were"): the view's own history, not the browser's.
+  let canGoBack = $state(false)
 
   // A place named while the book is open moves there without reopening.
   $effect(() => {
@@ -152,6 +155,10 @@
       .then((opened) => {
         view = opened
         disposed = opened
+        opened.history.addEventListener('index-change', () => {
+          canGoBack = opened.history.canGoBack
+        })
+        canGoBack = opened.history.canGoBack
         void opened.book.getCover?.().then((cover) => {
           if (cover && disposed === opened) coverUrl = URL.createObjectURL(cover)
         })
@@ -294,6 +301,22 @@
   </svg>
 {/snippet}
 
+<!-- An icon, not the ↶ glyph: that glyph comes from a fallback font whose
+     taller line made the button taller than its neighbours. Inline at 1em,
+     it sits in the button's own line, so the height matches. -->
+{#snippet backIcon()}
+  <svg class="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+    <path
+      d="M5.5 3.5 2.5 6.5l3 3M2.5 6.5h7a3.5 3.5 0 0 1 0 7H8"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.4"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+{/snippet}
+
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="reader">
@@ -301,6 +324,11 @@
     <button onclick={onclose} aria-label={t('Library')} title={t('Library')}>←</button>
     {#if !pinned}
       <button onclick={openToc} aria-label={t('Contents')} title={t('Contents')}>☰</button>
+    {/if}
+    {#if canGoBack}
+      <button onclick={() => view?.history.back()} aria-label={t('Back')} title={t('Back')}
+        >{@render backIcon()}</button
+      >
     {/if}
     <h1>{title}</h1>
     <button
@@ -427,6 +455,12 @@
   .toolbar button {
     font-size: 1rem;
     min-inline-size: 2rem;
+  }
+
+  .toolbar .icon {
+    inline-size: 1em;
+    block-size: 1em;
+    vertical-align: -0.125em;
   }
 
   /* A dot on the settings button, matching the library cover's update badge. */

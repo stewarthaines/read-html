@@ -187,7 +187,7 @@ function coverSvg(title, background) {
  *   title: string,
  *   creator: string,
  *   language: string,
- *   chapters: { file: string, properties?: string, spineProperties?: string }[],
+ *   chapters: { file: string, properties?: string, spineProperties?: string, linear?: string }[],
  *   spineAttrs?: string,
  *   extraManifest?: string[],
  *   coverHref?: string,
@@ -219,7 +219,7 @@ function packageOpf({
   const spineItems = chapters
     .map(
       (chapter, i) =>
-        `    <itemref idref="chapter${i + 1}"${
+        `    <itemref idref="chapter${i + 1}"${chapter.linear ? ` linear="${chapter.linear}"` : ''}${
           chapter.spineProperties ? ` properties="${chapter.spineProperties}"` : ''
         }/>`,
     )
@@ -919,6 +919,61 @@ function longToc() {
   }
 }
 
+/**
+ * A book with a notes chapter outside the reading order (linear="no", no
+ * contents entry), reached by a link in chapter one, as SEED.html research
+ * chapters are. A second non-linear chapter has its own contents entry.
+ * @returns {Book}
+ */
+function notesBook() {
+  const title = 'Notes Book'
+  const chapters = [
+    { file: 'chapter1.xhtml', title: 'Chapter One' },
+    { file: 'chapter2.xhtml', title: 'Chapter Two' },
+    { file: 'notes.xhtml', title: 'Notes', linear: 'no' },
+    { file: 'appendix.xhtml', title: 'Appendix', linear: 'no' },
+  ]
+  const listed = chapters.filter((chapter) => chapter.file !== 'notes.xhtml')
+  const chapterOne = chapterXhtml('Chapter One', 16, {
+    paragraphIds: true,
+    paragraphText: (i) =>
+      i === 3
+        ? `Paragraph 3 of Chapter One, with <a href="notes.xhtml#n2">a note</a>. ${PARAGRAPH_BODY}`
+        : `Paragraph ${i} of Chapter One. ${PARAGRAPH_BODY}`,
+  })
+  return {
+    filename: 'notes-book.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000009',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters,
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(
+          title,
+          listed.map((chapter) => ({ label: chapter.title, href: chapter.file })),
+        ),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('Notes', '#556644') },
+      { name: 'OEBPS/chapter1.xhtml', data: chapterOne },
+      ...chapters.slice(1).map((chapter) => ({
+        name: `OEBPS/${chapter.file}`,
+        data: chapterXhtml(chapter.title, 4, { paragraphIds: true }).replaceAll(' id="p', ' id="n'),
+      })),
+    ],
+  }
+}
+
 const outputs = [
   basicLtr,
   rtlBook,
@@ -934,6 +989,7 @@ const outputs = [
   fixedLayout,
   noMetadata,
   longToc,
+  notesBook,
 ]
 
 mkdirSync(outDir, { recursive: true })

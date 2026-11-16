@@ -6,6 +6,7 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ### Added
 
+- After following a link or choosing a chapter, a Back button returns you to the page you were reading, such as from a notes chapter. While you read a chapter that is not in the contents, no entry is marked as current.
 - On a wide screen the contents now start pinned beside the book; close them once and they stay closed.
 - While you browse a catalog, the address shows it, so you can copy it to share or reload it. Back from a book you opened there returns to the catalog.
 - A book link can open at a chapter, section or picture: add `#chapter` or `#chapter/id` to a `?book=` link, and if the place is not in the book the reader says so.
