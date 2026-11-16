@@ -2,12 +2,27 @@
   A picture from the book alone and fullscreen, to zoom into and pan around
   (docs/SPEC.md, "A picture fullscreen, with zoom and pan"). One picture at a
   time; only Close or Escape closes it.
+
+  Not a top-layer modal: Chrome on iPad places top-layer dialogs under its
+  own toolbar, hiding the top of the picture and the buttons. The dialog
+  opens non-modally and fills its positioned parent (the reader, which that
+  browser places correctly); the parent makes the rest inert through
+  `onopenchange`, and Escape is handled here.
 -->
 <script lang="ts">
   import { SvelteMap } from 'svelte/reactivity'
   import { t } from '../i18n/index.svelte'
 
+  interface Props {
+    /** Told when the view opens and closes, to make the rest inert. */
+    onopenchange?: (open: boolean) => void
+  }
+  let { onopenchange }: Props = $props()
+
   let dialog: HTMLDialogElement
+  let closeButton: HTMLButtonElement
+  // Focus to give back on closing.
+  let returnFocus: HTMLElement | null = null
   let stage = $state<HTMLDivElement>()
   let src = $state('')
   let alt = $state('')
@@ -41,7 +56,10 @@
     scale = 1
     x = 0
     y = 0
-    dialog.showModal()
+    returnFocus = document.activeElement as HTMLElement | null
+    dialog.show()
+    onopenchange?.(true)
+    closeButton.focus()
   }
 
   export function isOpen(): boolean {
@@ -157,6 +175,17 @@
 
   function onKeydown(event: KeyboardEvent): void {
     switch (event.key) {
+      case 'Escape':
+        close()
+        break
+      case 'Tab': {
+        // Focus stays among the view's buttons, as a top-layer modal's would.
+        const buttons = [...dialog.querySelectorAll('button')]
+        const at = buttons.indexOf(document.activeElement as HTMLButtonElement)
+        const next = at < 0 ? (event.shiftKey ? -1 : 0) : event.shiftKey ? at - 1 : at + 1
+        buttons[(next + buttons.length) % buttons.length]?.focus()
+        break
+      }
       case '+':
       case '=':
         zoomTo(scale * STEP)
@@ -193,8 +222,13 @@
   bind:this={dialog}
   class="picture"
   aria-label={alt || t('Picture')}
+  aria-modal="true"
   onkeydown={onKeydown}
-  onclose={() => (src = '')}
+  onclose={() => {
+    src = ''
+    onopenchange?.(false)
+    returnFocus?.focus()
+  }}
 >
   <div
     class="picture-stage"
@@ -206,6 +240,7 @@
     onpointerup={onPointerUp}
     onpointercancel={onPointerUp}
     role="presentation"
+    tabindex="-1"
   >
     {#if src}
       <img
@@ -226,16 +261,20 @@
     <button onclick={() => zoomTo(scale * STEP)} aria-label={t('Zoom in')} title={t('Zoom in')}
       >+</button
     >
-    <button onclick={close} aria-label={t('Close')} title={t('Close')}>✕</button>
+    <button bind:this={closeButton} onclick={close} aria-label={t('Close')} title={t('Close')}
+      >✕</button
+    >
   </div>
 </dialog>
 
 <style>
   dialog.picture {
+    position: absolute;
+    z-index: 1;
     box-sizing: border-box;
     inset: 0;
-    inline-size: 100vw;
-    block-size: 100svh;
+    inline-size: auto;
+    block-size: auto;
     max-inline-size: none;
     max-block-size: none;
     margin: 0;
@@ -246,15 +285,12 @@
     overflow: hidden;
   }
 
-  dialog.picture::backdrop {
-    background: Canvas;
-  }
-
   .picture-stage {
     position: absolute;
     inset: 0;
     overflow: hidden;
     touch-action: none;
+    outline: none;
     user-select: none;
     -webkit-user-select: none;
   }

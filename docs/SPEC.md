@@ -12,7 +12,7 @@ Accepted when (e2e: `e2e/picture.spec.ts`):
 - Zoom: pinch on a touch screen; the wheel or a trackpad pinch around the pointer; Zoom in and Zoom out buttons, and the `+` and `-` keys. Double-tap or double-click switches between fitted and zoomed in. Zoom runs from fitted up to four times fitted or twice the picture's own pixel size, whichever is larger.
 - Pan: when zoomed, drag with one finger or the mouse, or use the arrow keys. The picture cannot be moved off the screen.
 - Closing is explicit: the Close button or Escape. A tap beside the picture does nothing. Closing returns to the same page, with focus back on the reader.
-- The view is a modal dialog named by the picture's alt text (or "Picture"); its buttons have accessible names.
+- The view is a modal dialog named by the picture's alt text (or "Picture"); its buttons have accessible names, focus starts on Close, and the reader behind it is inert. It covers the reader's own area rather than the browser's top layer, since Chrome on iPad places top-layer dialogs under its toolbar.
 - Out of scope: moving to the next or previous picture, captions, and saving the picture.
 
 ## Back to where you were, and non-linear chapters (post-0.11)

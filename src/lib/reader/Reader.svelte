@@ -81,6 +81,8 @@
   // Whether a link or contents jump can be undone (docs/SPEC.md, "Back to
   // where you were"): the view's own history, not the browser's.
   let canGoBack = $state(false)
+  // While a picture is shown fullscreen, the reader behind it is inert.
+  let viewingPicture = $state(false)
 
   // A place named while the book is open moves there without reopening.
   $effect(() => {
@@ -360,7 +362,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="reader">
-  <header class="toolbar">
+  <header class="toolbar" inert={viewingPicture}>
     <button onclick={onclose} aria-label={t('Library')} title={t('Library')}>←</button>
     {#if !pinned}
       <button onclick={openToc} aria-label={t('Contents')} title={t('Contents')}>☰</button>
@@ -384,7 +386,7 @@
       >{bookIsRtl ? '‹' : '›'}</button
     >
   </header>
-  <div class="body">
+  <div class="body" inert={viewingPicture}>
     {#if pinned}
       <aside class="toc toc-pane" aria-label={t('Contents')} {@attach showCurrent}>
         {#snippet paneControls()}
@@ -412,6 +414,7 @@
       <div class="view" bind:this={container}></div>
     </main>
   </div>
+  <PictureViewer bind:this={pictureViewer} onopenchange={(open) => (viewingPicture = open)} />
 </div>
 
 <SettingsDialog
@@ -426,8 +429,6 @@
     onupdate,
   }}
 />
-
-<PictureViewer bind:this={pictureViewer} />
 
 <!-- §3.4 one-time consent prompt. Enable and Keep-off both persist via
      onconsent; dismissing (Esc) records nothing and re-asks next open. -->
@@ -459,7 +460,9 @@
 </dialog>
 
 <style>
+  /* Positioned: the picture view fills it (see PictureViewer). */
   .reader {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100svh;

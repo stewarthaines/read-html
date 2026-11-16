@@ -42,6 +42,12 @@ test('a tapped picture opens fitted to the screen, and only Close or Escape clos
   expect(fitted.x).toBeGreaterThanOrEqual(0)
   expect(fitted.x + fitted.width).toBeLessThanOrEqual(1200)
 
+  // The reader behind is out of reach while the picture is shown.
+  await expect(page.locator('header.toolbar')).toHaveAttribute('inert', '')
+  await expect(page.locator('div.body')).toHaveAttribute('inert', '')
+  await page.keyboard.press('Tab')
+  await expect(viewer(page).locator(':focus')).toHaveCount(1)
+
   // A tap beside the picture does nothing.
   await page.mouse.click(5, 790)
   await expect(viewer(page)).toBeVisible()
@@ -49,6 +55,7 @@ test('a tapped picture opens fitted to the screen, and only Close or Escape clos
   await viewer(page).getByRole('button', { name: 'Close' }).click()
   await expect(viewer(page)).toBeHidden()
   await expect(page.frameLocator('iframe').getByRole('heading', { name: 'Pictures' })).toBeVisible()
+  await expect(page.locator('header.toolbar')).not.toHaveAttribute('inert', '')
 
   await inBook(page, '#map').click()
   await expect(viewer(page)).toBeVisible()
