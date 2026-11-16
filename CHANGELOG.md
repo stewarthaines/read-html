@@ -6,6 +6,7 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ### Added
 
+- Tap a picture to see it fullscreen, then pinch, scroll or use the buttons to zoom in and drag to look around.
 - After following a link or choosing a chapter, a Back button returns you to the page you were reading, such as from a notes chapter. While you read a chapter that is not in the contents, no entry is marked as current.
 - On a wide screen the contents now start pinned beside the book; close them once and they stay closed.
 - While you browse a catalog, the address shows it, so you can copy it to share or reload it. Back from a book you opened there returns to the catalog.

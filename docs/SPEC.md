@@ -2,6 +2,19 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## A picture fullscreen, with zoom and pan (post-0.11)
+
+A photograph or scan in a book (a certificate, a map, a family photo) is often too small on the page to read. Tapping it shows it alone, as large as the screen allows, to zoom into and move around.
+
+Accepted when (e2e: `e2e/picture.spec.ts`):
+
+- Tapping or clicking a picture in the book (`<img>`, or `<image>` in SVG) opens it fullscreen over the reader, one picture at a time, fitted to the screen. Not opened: a picture inside something the book makes tappable — a link (followed as before), a button, a label, an element with `role="button"` or an `onclick` attribute, or a §8 audio clip span (`span.clip`) — a picture whose tap the book's own script cancels (`preventDefault`), and a picture shown smaller than 64 CSS pixels on both sides (an icon or ornament). A scripted book's other pictures open like any book's, scripts on or off.
+- Zoom: pinch on a touch screen; the wheel or a trackpad pinch around the pointer; Zoom in and Zoom out buttons, and the `+` and `-` keys. Double-tap or double-click switches between fitted and zoomed in. Zoom runs from fitted up to four times fitted or twice the picture's own pixel size, whichever is larger.
+- Pan: when zoomed, drag with one finger or the mouse, or use the arrow keys. The picture cannot be moved off the screen.
+- Closing is explicit: the Close button or Escape. A tap beside the picture does nothing. Closing returns to the same page, with focus back on the reader.
+- The view is a modal dialog named by the picture's alt text (or "Picture"); its buttons have accessible names.
+- Out of scope: moving to the next or previous picture, captions, and saving the picture.
+
 ## Back to where you were, and non-linear chapters (post-0.11)
 
 A link in the text can lead into a chapter outside the reading order (a notes or research chapter, `linear="no"`), which usually has no contents entry and no link back. The reader needs one plain way back, and the contents should not claim the reader is in a chapter they are not.

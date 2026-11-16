@@ -463,6 +463,8 @@ const CLIPS_CHAPTER = `<?xml version="1.0" encoding="utf-8"?>
     <p><span class="clip" data-src="audio/tone.wav" data-begin="1" data-end="2" data-rate="1">Play the second clip</span></p>
     <p><span class="clip" data-src="missing/nowhere.mp3" data-begin="0" data-end="1">Broken clip</span></p>
     <audio id="clip-audio" src="audio/tone.wav" preload="auto"></audio>
+    <p><img id="photo" src="cover.svg" alt="A photo" style="inline-size: 6rem"/></p>
+    <p><span class="clip" data-src="audio/tone.wav" data-begin="0" data-end="1"><img id="clip-picture" src="cover.svg" alt="" style="inline-size: 5rem"/></span></p>
   </body>
 </html>
 `
@@ -974,6 +976,83 @@ function notesBook() {
   }
 }
 
+/**
+ * A large picture with a grid, so zoom and pan can be measured.
+ * @param {number} width
+ * @param {number} height
+ */
+function gridSvg(width, height) {
+  const lines = []
+  for (let x = 0; x <= width; x += 100)
+    lines.push(`<line x1="${x}" y1="0" x2="${x}" y2="${height}"/>`)
+  for (let y = 0; y <= height; y += 100)
+    lines.push(`<line x1="0" y1="${y}" x2="${width}" y2="${y}"/>`)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <rect width="${width}" height="${height}" fill="#ddeeff"/>
+  <g stroke="#335577" stroke-width="4">${lines.join('')}</g>
+</svg>
+`
+}
+
+/**
+ * A book of pictures: a plain one to open, a tiny ornament, one inside a link
+ * and one drawn as an SVG <image>, for the fullscreen picture view.
+ * @returns {Book}
+ */
+function picturesBook() {
+  const title = 'Pictures Book'
+  const pictures = `<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Pictures</title>
+  </head>
+  <body>
+    <h1>Pictures</h1>
+    <p><img id="map" src="images/map.svg" alt="A map of the district" style="inline-size: 12rem"/></p>
+    <p>An ornament: <img id="ornament" src="images/map.svg" alt="" style="inline-size: 24px"/></p>
+    <p><a href="chapter2.xhtml"><img id="portrait" src="images/map.svg" alt="A portrait" style="inline-size: 8rem"/></a></p>
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="160" height="120" viewBox="0 0 1600 1200">
+      <image id="drawn" width="1600" height="1200" xlink:href="images/map.svg"/>
+    </svg>
+  </body>
+</html>
+`
+  const chapters = [
+    { file: 'chapter1.xhtml', title: 'Pictures' },
+    { file: 'chapter2.xhtml', title: 'Chapter Two' },
+  ]
+  return {
+    filename: 'pictures-book.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000010',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters,
+          extraManifest: ['    <item id="map" href="images/map.svg" media-type="image/svg+xml"/>'],
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(
+          title,
+          chapters.map((chapter) => ({ label: chapter.title, href: chapter.file })),
+        ),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('Pictures', '#664455') },
+      { name: 'OEBPS/images/map.svg', data: gridSvg(1600, 1200) },
+      { name: 'OEBPS/chapter1.xhtml', data: pictures },
+      { name: 'OEBPS/chapter2.xhtml', data: chapterXhtml('Chapter Two', 4) },
+    ],
+  }
+}
+
 const outputs = [
   basicLtr,
   rtlBook,
@@ -990,6 +1069,7 @@ const outputs = [
   noMetadata,
   longToc,
   notesBook,
+  picturesBook,
 ]
 
 mkdirSync(outDir, { recursive: true })

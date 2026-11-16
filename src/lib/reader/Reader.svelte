@@ -3,6 +3,7 @@
   import { MediaQuery } from 'svelte/reactivity'
   import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
+  import PictureViewer from './PictureViewer.svelte'
   import { settings, type Spread } from '../settings/index.svelte'
   import { bookContentCss } from '../theme/book'
   import { decideScripting } from '../scripting/consent'
@@ -66,6 +67,7 @@
   let tocDialog: HTMLDialogElement
   let consentDialog: HTMLDialogElement
   let settingsDialog: SettingsDialog
+  let pictureViewer: PictureViewer
   let view = $state<FoliateViewElement>()
   let error = $state('')
   // Only a scripted book has anything to trust, so only it gets the toggle.
@@ -185,8 +187,45 @@
   // iframe also needs an accessible name, which foliate does not set.
   function handleSectionLoad(doc: Document): void {
     doc.addEventListener('keydown', handleKeydown)
+    // On the section's window, so it runs after the book's own click
+    // listeners (on its elements and document) and sees their preventDefault.
+    doc.defaultView?.addEventListener('click', handlePictureClick)
     doc.defaultView?.frameElement?.setAttribute('title', t('Book content'))
   }
+
+  // A tapped picture opens fullscreen (docs/SPEC.md, "A picture fullscreen"),
+  // except a small ornament, one inside something the book makes tappable
+  // (a §8 clip span among them), or one whose tap the book's script cancelled.
+  const SMALLEST_PICTURE = 64
+  const TAPPABLE = 'a[href], button, label, [role="button"], [onclick], span.clip'
+
+  function handlePictureClick(event: MouseEvent): void {
+    if (event.defaultPrevented) return
+    const target = event.target as Element | null
+    const picture = target?.closest?.('img, image')
+    if (!picture || picture.closest(TAPPABLE)) return
+    const { width, height } = picture.getBoundingClientRect()
+    if (width < SMALLEST_PICTURE && height < SMALLEST_PICTURE) return
+    const url = pictureUrl(picture)
+    if (!url) return
+    event.preventDefault()
+    pictureViewer.open(url, picture.getAttribute('alt') ?? '')
+  }
+
+  function pictureUrl(picture: Element): string | null {
+    if (picture.localName === 'img') {
+      const img = picture as HTMLImageElement
+      return img.currentSrc || img.src || null
+    }
+    const href = picture.getAttribute('href') ?? picture.getAttributeNS(XLINK, 'href')
+    if (!href) return null
+    try {
+      return new URL(href, picture.ownerDocument.baseURI).href
+    } catch {
+      return null
+    }
+  }
+  const XLINK = 'http://www.w3.org/1999/xlink'
 
   function handleConsentAnswer(granted: boolean): void {
     consentDialog.close()
@@ -195,6 +234,7 @@
 
   function handleKeydown(event: KeyboardEvent): void {
     if (tocDialog?.open || consentDialog?.open || settingsDialog?.isOpen()) return
+    if (pictureViewer?.isOpen()) return
     // A key the focused control acts on itself (a select's arrows, a
     // button's Space) is left to it; every other paging key pages.
     if (keyIsClaimed(event.target, event.key)) return
@@ -386,6 +426,8 @@
     onupdate,
   }}
 />
+
+<PictureViewer bind:this={pictureViewer} />
 
 <!-- §3.4 one-time consent prompt. Enable and Keep-off both persist via
      onconsent; dismissing (Esc) records nothing and re-asks next open. -->
