@@ -9,15 +9,19 @@ export type Flow = 'paginated' | 'scrolled'
 // to flow — the choice is kept while scrolled, and applies again on return.
 export type Spread = 'auto' | 'single'
 export type Theme = 'auto' | 'light' | 'dark'
+// The contents beside the book: chosen pinned or unpinned, or not chosen
+// (null), which counts as pinned where there is room.
+type TocPin = 'pinned' | 'unpinned' | null
 
 export interface Settings {
   flow: Flow
   spread: Spread
   fontSize: number
   theme: Theme
-  /** The contents list is pinned beside the book (where there is room)
-   *  rather than opened as a drawer: a reading mode, kept across books. */
-  tocPinned: boolean
+  /** Whether the contents list is pinned beside the book (where there is
+   *  room) rather than opened as a drawer: a reading mode, kept across books.
+   *  Not chosen counts as pinned. */
+  tocPin: TocPin
 }
 
 export const FONT_SIZE_MIN = 70
@@ -29,7 +33,7 @@ const DEFAULTS: Settings = {
   spread: 'auto',
   fontSize: 100,
   theme: 'auto',
-  tocPinned: false,
+  tocPin: null,
 }
 
 function clampFontSize(value: unknown): number {
@@ -40,15 +44,23 @@ function clampFontSize(value: unknown): number {
 
 function sanitize(value: unknown): Settings {
   const raw = (typeof value === 'object' && value !== null ? value : {}) as Partial<
-    Record<keyof Settings, unknown>
+    Record<keyof Settings | 'tocPinned', unknown>
   >
   return {
     flow: raw.flow === 'scrolled' ? 'scrolled' : DEFAULTS.flow,
     spread: raw.spread === 'single' ? 'single' : DEFAULTS.spread,
     fontSize: clampFontSize(raw.fontSize ?? DEFAULTS.fontSize),
     theme: raw.theme === 'light' || raw.theme === 'dark' ? raw.theme : DEFAULTS.theme,
-    tocPinned: raw.tocPinned === true,
+    tocPin: readTocPin(raw.tocPin, raw.tocPinned),
   }
+}
+
+// Settings saved before the choice had three states carry `tocPinned`: true
+// was a choice to pin, but a saved false cannot be told apart from never
+// having chosen (every save wrote it), so it reads as not chosen.
+function readTocPin(value: unknown, legacy: unknown): TocPin {
+  if (value === 'pinned' || value === 'unpinned') return value
+  return legacy === true ? 'pinned' : null
 }
 
 function load(): Settings {
@@ -99,11 +111,15 @@ export const settings = {
     state.theme = value
     save(state)
   },
+  get tocPin() {
+    return state.tocPin
+  },
+  /** Pinned, by choice or by default (not chosen). */
   get tocPinned() {
-    return state.tocPinned
+    return state.tocPin !== 'unpinned'
   },
   set tocPinned(value: boolean) {
-    state.tocPinned = value
+    state.tocPin = value ? 'pinned' : 'unpinned'
     save(state)
   },
 }

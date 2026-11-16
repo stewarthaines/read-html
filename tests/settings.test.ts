@@ -18,16 +18,34 @@ test('defaults: paginated flow, auto columns, 100% font size, auto theme', () =>
   expect(settings.spread).toBe('auto')
   expect(settings.fontSize).toBe(100)
   expect(settings.theme).toBe('auto')
-  expect(settings.tocPinned).toBe(false)
+  expect(settings.tocPin).toBeNull()
+  // Not chosen counts as pinned.
+  expect(settings.tocPinned).toBe(true)
 })
 
-test('a pinned contents list persists; anything but true reads as unpinned', () => {
+test('pinning and unpinning persist as a choice', () => {
+  settings.tocPinned = false
+  reloadSettings()
+  expect(settings.tocPin).toBe('unpinned')
+  expect(settings.tocPinned).toBe(false)
   settings.tocPinned = true
   reloadSettings()
-  expect(settings.tocPinned).toBe(true)
-  localStorage.setItem(LS_SETTINGS, JSON.stringify({ tocPinned: 'yes' }))
+  expect(settings.tocPin).toBe('pinned')
+  localStorage.setItem(LS_SETTINGS, JSON.stringify({ tocPin: 'sideways' }))
   reloadSettings()
-  expect(settings.tocPinned).toBe(false)
+  expect(settings.tocPin).toBeNull()
+})
+
+test('an old pinned setting carries over; an old false reads as not chosen', () => {
+  localStorage.setItem(LS_SETTINGS, JSON.stringify({ tocPinned: true }))
+  reloadSettings()
+  expect(settings.tocPin).toBe('pinned')
+  localStorage.setItem(LS_SETTINGS, JSON.stringify({ tocPinned: false, fontSize: 120 }))
+  reloadSettings()
+  expect(settings.tocPin).toBeNull()
+  // The old field is gone from the next save.
+  settings.fontSize = 130
+  expect(JSON.parse(localStorage.getItem(LS_SETTINGS) ?? '{}')).not.toHaveProperty('tocPinned')
 })
 
 test('setters persist to localStorage under the readhtml key', () => {
@@ -41,7 +59,7 @@ test('setters persist to localStorage under the readhtml key', () => {
     spread: 'single',
     fontSize: 130,
     theme: 'dark',
-    tocPinned: false,
+    tocPin: null,
   })
 })
 

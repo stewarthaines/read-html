@@ -2,6 +2,17 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## Contents pinned by default on a wide screen (post-0.11)
+
+A first-time reader on a wide screen sees the book's contents beside it, without finding the pin. Pinning stays a reading mode the reader can turn off, kept across books.
+
+Accepted when (e2e: `e2e/toc.spec.ts`; unit: `tests/settings.test.ts`):
+
+- The pin choice has three states: pinned, unpinned, or not chosen. Not chosen counts as pinned. It is stored as `tocPin` (`'pinned'` or `'unpinned'`; absent means not chosen) in the settings record.
+- A reader who has not chosen sees the contents pinned beside the book whenever the window is wide enough to pin (unchanged: at least 50rem), and the drawer on a narrower window, as before.
+- Pinning from the drawer stores pinned; closing the pinned column stores unpinned. Either survives reloads and other books.
+- Settings saved before this carry `tocPinned`: `true` reads as pinned; anything else reads as not chosen, since a saved `false` cannot be told apart from never having chosen. The old field is dropped on the next save.
+
 ## A catalog keeps its address, and Back returns to it (post-0.11)
 
 Supersedes the deep-link rule that `?catalog=` is cleared from the URL: a catalog being browsed is as shareable as an open book.

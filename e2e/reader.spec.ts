@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { openFixture, readingFraction } from './helpers'
+import { openFixture, readingFraction, startUnpinned } from './helpers'
+
+// These tests open the contents as a drawer (docs/SPEC.md, pinned by default).
+startUnpinned(test)
 
 test('opening an EPUB from the file picker renders the first page paginated', async ({ page }) => {
   const section = await openFixture(page)

@@ -7,7 +7,7 @@ test('book CSS carries the font-size percentage', () => {
     spread: 'auto',
     fontSize: 130,
     theme: 'auto',
-    tocPinned: false,
+    tocPin: null,
   })
   expect(css).toContain('font-size: 130%')
 })
@@ -19,7 +19,7 @@ test('auto theme leaves both schemes enabled', () => {
       spread: 'auto',
       fontSize: 100,
       theme: 'auto',
-      tocPinned: false,
+      tocPin: null,
     }),
   ).toContain('color-scheme: light dark')
 })
@@ -30,7 +30,7 @@ test('manual themes constrain the scheme, and never use filters', () => {
     spread: 'auto',
     fontSize: 100,
     theme: 'dark',
-    tocPinned: false,
+    tocPin: null,
   })
   expect(dark).toContain('color-scheme: dark')
   expect(dark).not.toContain('filter')
@@ -40,7 +40,7 @@ test('manual themes constrain the scheme, and never use filters', () => {
       spread: 'auto',
       fontSize: 100,
       theme: 'light',
-      tocPinned: false,
+      tocPin: null,
     }),
   ).toContain('color-scheme: light')
 })

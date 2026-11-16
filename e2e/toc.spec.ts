@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { openFixture } from './helpers'
+import { openFixture, startUnpinned } from './helpers'
+
+// These tests open the contents as a drawer (docs/SPEC.md, pinned by default).
+startUnpinned(test)
 
 const LONG_TOC = 'fixtures/build/long-toc.epub'
 const LONG_TITLE = 'The Return of Meskhetian Archival Materials to Performing Practice'

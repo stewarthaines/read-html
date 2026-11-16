@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { openFixture } from './helpers'
+import { openFixture, startUnpinned } from './helpers'
+
+// These tests open the contents as a drawer (docs/SPEC.md, pinned by default).
+startUnpinned(test)
 
 // Visual baselines are generated inside the CI-matching Linux image
 // (npm run test:e2e:update) — font rendering differs across platforms, so

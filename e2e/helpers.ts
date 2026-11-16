@@ -21,3 +21,20 @@ export async function openFixture(page: Page, fixture = BASIC_LTR): Promise<Fram
 export async function importFixture(page: Page, fixture = BASIC_LTR): Promise<void> {
   await page.setInputFiles('input[type=file]', fixture)
 }
+
+/**
+ * Start each page with the contents unpinned, for tests of the drawer: a
+ * wide window otherwise pins them by default. Only an absent settings record
+ * is seeded, so a choice a test makes (and a reload) is kept.
+ */
+export function startUnpinned(test: {
+  beforeEach: (fn: (args: { page: Page }) => Promise<void>) => void
+}): void {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('readhtml_settings')) {
+        localStorage.setItem('readhtml_settings', JSON.stringify({ tocPin: 'unpinned' }))
+      }
+    })
+  })
+}

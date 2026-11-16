@@ -1,5 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { startUnpinned } from './helpers'
+
+// These tests open the contents as a drawer (docs/SPEC.md, pinned by default).
+startUnpinned(test)
 
 const FIXTURES = 'http://127.0.0.1:4174'
 const CATALOG_URL = `${FIXTURES}/catalog.xml`

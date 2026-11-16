@@ -7,17 +7,16 @@ const link = (fragment: string) => `/?book=${encodeURIComponent(BOOK)}${fragment
 
 type ViewElement = Element & { lastLocation?: { cfi: string } }
 
-/** Whether the element with `id` is on the visible page, not merely in the chapter. */
+/** Whether the element with `id` is on the visible page, not merely in the
+ *  chapter: its centre inside the book's own box (a pinned contents column
+ *  narrows it; the next page can start within a pixel of its edge). */
 async function onScreen(page: Page, id: string): Promise<boolean> {
   const box = await page.frameLocator('iframe').locator(`#${id}`).boundingBox()
-  const viewport = page.viewportSize()
-  if (!box || !viewport) return false
-  return (
-    box.x + box.width > 0 &&
-    box.x < viewport.width &&
-    box.y + box.height > 0 &&
-    box.y < viewport.height
-  )
+  const book = await page.locator('foliate-view').boundingBox()
+  if (!box || !book) return false
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+  return x > book.x && x < book.x + book.width && y > book.y && y < book.y + book.height
 }
 
 const heading = (page: Page, name: string) =>

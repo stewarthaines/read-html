@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readingFraction } from './helpers'
+import { readingFraction, startUnpinned } from './helpers'
+
+// These tests open the contents as a drawer (docs/SPEC.md, pinned by default).
+startUnpinned(test)
 
 const RTL_BOOK = 'fixtures/build/rtl-book.epub'
 
