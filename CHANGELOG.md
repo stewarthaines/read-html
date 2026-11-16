@@ -6,6 +6,7 @@ Notable changes to READ.html, described from the reader's point of view. Impleme
 
 ### Added
 
+- While you browse a catalog, the address shows it, so you can copy it to share or reload it. Back from a book you opened there returns to the catalog.
 - A book link can open at a chapter, section or picture: add `#chapter` or `#chapter/id` to a `?book=` link, and if the place is not in the book the reader says so.
 
 ## [0.11.0] — 2026-11-13

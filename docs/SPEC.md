@@ -2,6 +2,16 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## A catalog keeps its address, and Back returns to it (post-0.11)
+
+Supersedes the deep-link rule that `?catalog=` is cleared from the URL: a catalog being browsed is as shareable as an open book.
+
+Accepted when (e2e: `e2e/catalog-address.spec.ts`):
+
+- While a catalog is browsed, the address carries `?catalog=<its root URL>`, encoded exactly once, however it was opened (a `?catalog=` link or the sources pane). Moving within the catalog's own feeds keeps the root. Reloading reopens it. Returning to the library returns the bare address. These changes use `history.replaceState`.
+- Opening a book from a browsed catalog adds a history entry (`history.pushState`) whose address is the book's (`?book=…` where it has a source URL). Back closes the reader, saving the position as on any close, and shows that catalog again with its address. The reader's own Library button does the same as Back for such a book. Forward from the catalog reopens the book.
+- A book opened any other way (library, picker, `?book=` link, embedded payload) adds no history entry, as before, and its Library button returns to the library.
+
 ## Links to a place in a book (post-0.11)
 
 A `?book=` link can carry a fragment naming a place in the book, so a link written in an email opens at a chapter, a section or a figure. Links are written by hand for now; no control in READ.html or SEED.html creates them (a later feature).
@@ -64,7 +74,7 @@ Accepted when all of the following hold (e2e: `e2e/catalog.spec.ts`; unit: `test
 - Catalog view: add a catalog by URL (saving it), browse publications and navigation sub-feeds, covers from the feed's image links, download-to-library. A download (or an update) does not open the book: the entry's button turns to Open, so several books can be fetched before choosing one. Saved catalogs (localStorage `readhtml_catalogs`, key in `storage/keys.ts`, try/catch-wrapped) list with open, remove, and a per-catalog "Trust books from this catalog" toggle.
 - **URL-encoding correctness (§3.7)**: feed hrefs are used exactly as given, resolved with `new URL(href, base)`, never re-encoded. Unit tests pin `%20` staying `%20` (not `%2520`); e2e downloads `spaces in name.epub` through the fixture catalog end-to-end and reads it (internal `%20` hrefs included).
 - **No proxy; CORS is the publisher's job**: a failed catalog or book fetch shows a friendly error naming CORS as the likely cause. e2e asserts it against a no-CORS endpoint on the fixture server.
-- Deep links, read once at startup ~~then cleared from the URL~~ (superseded for `?book=`: see "Deep links keep their address"): `?book=<url>` fetches and opens an EPUB (imported to the library); `?catalog=<url>` opens the catalog browser pre-loaded and is cleared from the URL.
+- Deep links, read once at startup ~~then cleared from the URL~~ (superseded for `?book=`: see "Deep links keep their address"): `?book=<url>` fetches and opens an EPUB (imported to the library); `?catalog=<url>` opens the catalog browser pre-loaded ~~and is cleared from the URL~~ (superseded: see "A catalog keeps its address").
 - Drag-drop import onto the library (per the M2 amendment), same pipeline as the picker.
 - **Updates from catalogs**: a book acquired from a catalog records the feed it was listed in (`catalogUrl`) and the entry's version (`catalogVersion`). When the app starts, when the saved catalogs change and whenever the library is shown again, the saved catalogs and every recorded feed are fetched once each (sub-feeds are not followed) and held books are matched by `dc:identifier`. An entry offers an update when its version is newer than both the book's `dcterms:modified` and its `catalogVersion`. A feed that fails to load yields no mark and no error. A book with an update shows a badge on its library cover (and "Update available" in its accessible name); in the reader the settings button carries a dot and the label "Settings, update available", and the settings dialog leads with the offer and an Update button. Updating downloads the new version, replaces the held copy, and reopens it at the same fraction of the book (the old CFI may not survive the edits); consent given to the old copy carries over unless the download recorded its own. Unit: `tests/updates.test.ts`.
 - Trust-this-catalog (§3.4 step 4): books downloaded from a trusted catalog record `scriptingConsent: true` at import (never overriding an explicit revocation); e2e: the clips book via a trusted catalog opens with scripts running and no prompt.

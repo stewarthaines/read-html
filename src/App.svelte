@@ -9,7 +9,7 @@
   import type { FetchProgress } from './lib/catalog/fetch-progress'
   import { settings } from './lib/settings/index.svelte'
   import { applyAppTheme } from './lib/theme/app'
-  import Library from './lib/library/Library.svelte'
+  import Library, { type BrowsedCatalog } from './lib/library/Library.svelte'
   import { importBook } from './lib/library/import'
   import Reader from './lib/reader/Reader.svelte'
   import { parsePlaceFragment, type PlaceLink } from './lib/reader/place-link'
@@ -44,7 +44,14 @@
     embedded?: boolean
     /** The place the opening `?book=` link's fragment names. */
     place?: PlaceLink | null
+    /** The catalog this book was opened from: Back (and the Library
+     *  button) return to it. */
+    fromCatalog?: BrowsedCatalog | null
   }
+
+  /** What a history entry records, so Back and Forward can restore it. */
+  type EntryState =
+    { catalog: BrowsedCatalog } | { book: string; fromCatalog: BrowsedCatalog } | null
 
   const storage = createBookStorage()
 
@@ -52,8 +59,12 @@
   let current = $state<OpenedBook>()
   // A place named by a new fragment while a book is open (hashchange).
   let jump = $state.raw<PlaceLink | null>(null)
-  // Deep-linked catalog (?catalog=), browsed by the library's sources pane.
-  let initialCatalogUrl = $state<string | null>(null)
+  // The catalog the library browses when it next appears: a ?catalog= link,
+  // or the catalog a book was opened from, returned to.
+  let initialCatalog = $state.raw<BrowsedCatalog | null>(null)
+  // The catalog the library is browsing (null: the collection). It stays set
+  // while a book opened from it is open, since the library is unmounted then.
+  let browsing: BrowsedCatalog | null = null
   let error = $state('')
   // A `?book=` link on its way in: what the status line says until the reader opens.
   let progress = $state('')
@@ -91,16 +102,17 @@
     void refresh()
     // A non-empty payload slot wins over deep links (docs/PAYLOAD_SLOT.md).
     if (openEmbedded()) return
-    // Deep links (§3.7) are read once at startup. `?catalog=` is cleared so a
-    // reload returns to the app's own state; `?book=` stays while its book is
-    // open (showAddress), so the address can be shared or reloaded.
+    // Deep links (§3.7) are read once at startup. Both stay in the address
+    // while their book or catalog is showing, so it can be shared or reloaded.
     const params = new URLSearchParams(location.search)
     const bookUrl = params.get('book')
     const catalogUrl = params.get('catalog')
-    if (catalogUrl && !bookUrl) showAddress(undefined)
+    // A reload of a book opened from a catalog keeps its way back.
+    const entry = history.state as EntryState
+    const fromCatalog = entry && 'book' in entry ? entry.fromCatalog : null
     // The fragment is read before opening drops it from the address.
-    if (bookUrl) void openFromUrl(bookUrl, parsePlaceFragment(location.hash))
-    else if (catalogUrl) initialCatalogUrl = catalogUrl
+    if (bookUrl) void openFromUrl(bookUrl, parsePlaceFragment(location.hash), fromCatalog)
+    else if (catalogUrl) initialCatalog = { root: catalogUrl, save: true }
   })
 
   // Embedded book: trusted by construction for this session only — consent
@@ -132,13 +144,35 @@
     applyAppTheme(settings.theme)
   })
 
-  // The address names the open book's source (`?book=`) while it is open, so
-  // it can be copied to share the book or reloaded to reopen it; otherwise it
-  // is the bare page. replaceState: the back button behaves as before.
-  function showAddress(sourceUrl: string | undefined): void {
+  // The address names what is showing — the open book's source (`?book=`) or
+  // the browsed catalog (`?catalog=`) — so it can be copied to share it or
+  // reloaded to reopen it; otherwise it is the bare page. Only a book opened
+  // from a catalog adds a history entry (push); everything else replaces.
+  function setAddress(
+    show: { book?: string; catalog?: string },
+    state: EntryState,
+    mode: 'replace' | 'push' = 'replace',
+  ): void {
     const url = new URL(location.pathname, location.href)
-    if (sourceUrl) url.searchParams.set('book', sourceUrl)
-    history.replaceState(history.state, '', url)
+    if (show.book) url.searchParams.set('book', show.book)
+    else if (show.catalog) url.searchParams.set('catalog', show.catalog)
+    if (mode === 'push') history.pushState(state, '', url)
+    else history.replaceState(state, '', url)
+  }
+
+  // The open book's address, keeping what the entry records.
+  function showAddress(sourceUrl: string | undefined): void {
+    setAddress({ book: sourceUrl }, history.state as EntryState)
+  }
+
+  // The library reports each change of catalog; the address follows while
+  // no book is open.
+  function handleBrowse(next: BrowsedCatalog | null): void {
+    if (!next && !browsing) return
+    browsing = next
+    if (current) return
+    if (next) setAddress({ catalog: next.root }, { catalog: next })
+    else setAddress({}, null)
   }
 
   function describeProgress({ loaded, total }: FetchProgress): string {
@@ -162,8 +196,8 @@
     try {
       const record = await importBook(await storage, file)
       lastCfi = null
-      initialCatalogUrl = null
-      showAddress(undefined)
+      initialCatalog = null
+      setAddress({}, null)
       current = {
         id: record.id,
         file,
@@ -176,7 +210,16 @@
     }
   }
 
-  async function handleOpen(listed: BookRecord, place: PlaceLink | null = null): Promise<void> {
+  /**
+   * Open a library book. Opened from a browsed catalog, it adds a history
+   * entry so Back returns there; `restore` reopens such a book in place
+   * (Forward, or a reload of its entry) without adding another.
+   */
+  async function handleOpen(
+    listed: BookRecord,
+    place: PlaceLink | null = null,
+    restore?: { fromCatalog: BrowsedCatalog },
+  ): Promise<void> {
     error = ''
     // Re-read the record: consent may have changed in settings since the
     // library list was loaded.
@@ -189,9 +232,14 @@
     }
     await updateBook(record.id, { lastOpened: Date.now() })
     lastCfi = null
-    // A consumed deep link must not re-open the catalog when the reader closes.
-    initialCatalogUrl = null
-    showAddress(record.sourceUrl)
+    const fromCatalog = restore ? restore.fromCatalog : browsing
+    // What the library shows when the reader closes: the catalog the book
+    // came from, else the collection (a consumed deep link must not return).
+    initialCatalog = fromCatalog
+    if (restore) showAddress(record.sourceUrl)
+    else if (fromCatalog) {
+      setAddress({ book: record.sourceUrl }, { book: record.id, fromCatalog }, 'push')
+    } else setAddress({ book: record.sourceUrl }, null)
     jump = null
     current = {
       id: record.id,
@@ -201,17 +249,23 @@
       downloadName: downloadFileName(record),
       sourceUrl: record.sourceUrl,
       place,
+      fromCatalog,
     }
   }
 
   // A `?book=` link opens the stored copy it already brought in, if any (no
   // download, works offline); otherwise it downloads with progress showing.
-  async function openFromUrl(url: string, place: PlaceLink | null = null): Promise<void> {
+  async function openFromUrl(
+    url: string,
+    place: PlaceLink | null = null,
+    fromCatalog: BrowsedCatalog | null = null,
+  ): Promise<void> {
     error = ''
+    const restore = fromCatalog ? { fromCatalog } : undefined
     try {
       const stored = await findBookBySource(url)
       if (stored) {
-        await handleOpen(stored, place)
+        await handleOpen(stored, place, restore)
         return
       }
       progress = t('Downloading the book…')
@@ -219,7 +273,7 @@
         progress = describeProgress(step)
       })
       progress = t('Opening the book…')
-      await handleOpen(record, place)
+      await handleOpen(record, place, restore)
     } catch (cause) {
       showAddress(undefined)
       error = cause instanceof Error ? cause.message : String(cause)
@@ -331,6 +385,7 @@
       scriptingConsent: record.scriptingConsent,
       downloadName: downloadFileName(record),
       sourceUrl: record.sourceUrl,
+      fromCatalog: current?.fromCatalog,
     }
   }
 
@@ -384,13 +439,39 @@
     }
   }
 
+  // The reader's Library button. A book opened from a catalog goes back
+  // through history, exactly as the browser's Back does, so the entries stay
+  // in step; any other returns to the library.
   async function handleClose(): Promise<void> {
+    const entry = history.state as EntryState
+    if (current?.fromCatalog && entry && 'book' in entry) {
+      history.back()
+      return
+    }
+    // The address first: nothing below may leave it naming the closed book.
+    setAddress({}, null)
+    await closeReader()
+  }
+
+  async function closeReader(): Promise<void> {
     persistPosition.flush()
     persistPayloadPosition.flush()
     current = undefined
-    showAddress(undefined)
     await refresh()
     void checkForUpdates()
+  }
+
+  // Back to a catalog closes the reader and browses it again; Forward to a
+  // book opened from a catalog reopens it.
+  async function handlePopState(event: PopStateEvent): Promise<void> {
+    const entry = event.state as EntryState
+    if (entry && 'catalog' in entry) {
+      initialCatalog = entry.catalog
+      if (current) await closeReader()
+    } else if (entry && 'book' in entry && !current) {
+      const record = await getBook(entry.book)
+      if (record) await handleOpen(record, null, { fromCatalog: entry.fromCatalog })
+    }
   }
 </script>
 
@@ -398,6 +479,7 @@
   ondragover={(event) => event.preventDefault()}
   ondrop={handleDrop}
   onhashchange={handleHashChange}
+  onpopstate={(event) => void handlePopState(event)}
 />
 
 {#if current}
@@ -437,7 +519,8 @@
     {books}
     updates={updateIds}
     {storage}
-    {initialCatalogUrl}
+    {initialCatalog}
+    onbrowse={handleBrowse}
     onpick={handlePick}
     onopen={handleOpen}
     onupdate={handleUpdate}

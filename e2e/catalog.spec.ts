@@ -69,7 +69,10 @@ test('downloads a book with %20 in its URL and reads it end-to-end (§3.7)', asy
     .getByRole('button', { name: 'Close' })
     .click()
 
-  // Back to the library (reader's Library button); it landed in the collection.
+  // The reader's Library button returns to the catalog it was opened from;
+  // the catalog's own Library button then shows the book in the collection.
+  await page.getByRole('button', { name: 'Library' }).click()
+  await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
   await page.getByRole('button', { name: 'Library' }).click()
   await expect(page.getByRole('listitem').filter({ hasText: 'Spaces In Name' })).toBeVisible()
 })
@@ -114,7 +117,7 @@ test('?catalog= deep link browses the feed on load and saves the catalog', async
   await page.goto(`/?catalog=${encodeURIComponent(CATALOG_URL)}`)
   await expect(page.getByRole('heading', { name: 'Fixture Catalog' })).toBeVisible()
   await expect(page.getByText('Spaces In Name')).toBeVisible()
-  expect(new URL(page.url()).search).toBe('')
+  expect(new URL(page.url()).searchParams.get('catalog')).toBe(CATALOG_URL)
 
   // The deep-linked catalog is persisted: it survives a reload as a saved source.
   await page.reload()

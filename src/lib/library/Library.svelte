@@ -1,4 +1,13 @@
+<script module lang="ts">
+  /** A catalog being browsed: its root URL, and whether its first load saves it. */
+  export interface BrowsedCatalog {
+    root: string
+    save: boolean
+  }
+</script>
+
 <script lang="ts">
+  import { untrack } from 'svelte'
   import CatalogFeed from '../catalog/CatalogFeed.svelte'
   import SourcesDrawer from '../catalog/SourcesDrawer.svelte'
   import { t } from '../i18n/index.svelte'
@@ -10,8 +19,11 @@
     /** Ids of books a catalog offers a newer version of. */
     updates?: ReadonlySet<string>
     storage: Promise<BookStorage>
-    /** Deep-linked catalog URL (?catalog=) to browse on load. */
-    initialCatalogUrl?: string | null
+    /** The catalog to browse on load: a `?catalog=` link, or the one a book
+     *  was opened from, returned to. */
+    initialCatalog?: BrowsedCatalog | null
+    /** Which catalog is being browsed, or null for the collection, on each change. */
+    onbrowse?: (catalog: BrowsedCatalog | null) => void
     onopen: (book: BookRecord) => void
     onupdate: (previous: BookRecord, updated: BookRecord) => void
     /** A catalog download landed in storage; the collection should re-list. */
@@ -24,7 +36,8 @@
     books,
     updates = new Set(),
     storage,
-    initialCatalogUrl = null,
+    initialCatalog = null,
+    onbrowse = undefined,
     onopen,
     onupdate,
     onacquire,
@@ -36,7 +49,7 @@
   let settingsDialog: SettingsDialog
   let sourcesDrawer: SourcesDrawer
   // undefined = the downloaded collection; otherwise the catalog being browsed.
-  let browse = $state<{ root: string; save: boolean }>()
+  let browse = $state<BrowsedCatalog>()
   // The browsed feed's current title, shown in the bar (like the reader title).
   let feedTitle = $state('')
 
@@ -48,15 +61,21 @@
     ),
   )
 
-  // The deep-linked URL arrives from the parent after this child mounts (child
-  // onMount precedes parent onMount), so react to it once when it appears. A
-  // deep-linked catalog is saved (deduped) like one added by hand.
+  // The deep-linked catalog arrives from the parent after this child mounts
+  // (child onMount precedes parent onMount), so react to it once when it
+  // appears. A deep-linked catalog is saved (deduped) like one added by hand.
   let deepLinkApplied = false
   $effect(() => {
-    if (!deepLinkApplied && initialCatalogUrl) {
+    if (!deepLinkApplied && initialCatalog) {
       deepLinkApplied = true
-      browse = { root: initialCatalogUrl, save: true }
+      browse = { ...initialCatalog }
     }
+  })
+
+  // The parent keeps the address (?catalog=) and the way back from a book.
+  $effect(() => {
+    const catalog = browse ? { root: browse.root, save: browse.save } : null
+    untrack(() => onbrowse?.(catalog))
   })
 
   let coverUrls = $state<Map<string, string>>(new Map())
