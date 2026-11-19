@@ -185,10 +185,13 @@
   })
 
   // Book sections live in same-origin iframes that swallow keyboard events,
-  // so paging keys are attached to each section document as it loads. The
-  // iframe also needs an accessible name, which foliate does not set.
+  // so paging keys are attached to each section as it loads: on its window,
+  // so they run after the book's own key listeners (on its elements and
+  // document, however late its script added them) and see their
+  // preventDefault. The iframe also needs an accessible name, which foliate
+  // does not set.
   function handleSectionLoad(doc: Document): void {
-    doc.addEventListener('keydown', handleKeydown)
+    doc.defaultView?.addEventListener('keydown', handleKeydown)
     // On the section's window, so it runs after the book's own click
     // listeners (on its elements and document) and sees their preventDefault.
     doc.defaultView?.addEventListener('click', handlePictureClick)
@@ -235,6 +238,8 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
+    // A key the book's own script handled is the book's (a game's arrows).
+    if (event.defaultPrevented) return
     if (tocDialog?.open || consentDialog?.open || settingsDialog?.isOpen()) return
     if (pictureViewer?.isOpen()) return
     // A key the focused control acts on itself (a select's arrows, a

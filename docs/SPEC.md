@@ -2,6 +2,14 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
+## Keys a book keeps (post-0.12)
+
+A book that runs a game or other interactive page (a PuzzleScript puzzle) needs the arrow keys for itself.
+
+Accepted when (e2e: `e2e/scripts.spec.ts`):
+
+- A key the book's own script handles (cancels with `preventDefault`) is the book's: the reader does not page on it, however late the book's script started listening. Keys the book leaves alone page as before. With scripts off nothing in the book can cancel a key.
+
 ## A picture fullscreen, with zoom and pan (post-0.11)
 
 A photograph or scan in a book (a certificate, a map, a family photo) is often too small on the page to read. Tapping it shows it alone, as large as the screen allows, to zoom into and move around.

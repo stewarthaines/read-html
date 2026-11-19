@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readingFraction } from './helpers'
 
 const CLIPS_BOOK = 'fixtures/build/scripted-clips.epub'
 const HOSTILE_BOOK = 'fixtures/build/scripted-hostile.epub'
@@ -207,4 +208,30 @@ test('revoking in settings returns the book to stripped without re-asking', asyn
   await section.getByText('Play the first clip').click()
   await page.waitForTimeout(400)
   expect(await audioState(page)).toEqual({ paused: true, currentTime: 0 })
+})
+
+test('a key the book handles is the book’s; keys it leaves alone still page', async ({ page }) => {
+  await importScripted(page, 'fixtures/build/scripted-keys.epub', 'Keys Chapter')
+  await page
+    .getByRole('dialog', { name: 'Interactive features' })
+    .getByRole('button', { name: 'Enable them' })
+    .click()
+  const section = page.frameLocator('iframe')
+  const body = section.locator('body')
+  // The book listens only after a delay, as a fetched game engine does.
+  await expect(body).toHaveAttribute('data-book-listening', 'true')
+  await section.getByRole('heading', { name: 'Keys Chapter' }).click()
+
+  const start = (await readingFraction(page)) ?? 0
+  await page.keyboard.press('ArrowRight')
+  await expect(body).toHaveAttribute('data-book-keys', '1')
+  await page.waitForTimeout(300)
+  expect(await readingFraction(page)).toBe(start)
+
+  const press = (key: string) => async () => {
+    await page.keyboard.press(key)
+    return readingFraction(page)
+  }
+  await expect.poll(press('PageDown')).toBeGreaterThan(start)
+  await expect.poll(press('ArrowLeft')).toBe(start)
 })

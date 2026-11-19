@@ -523,6 +523,58 @@ function scriptedClips() {
   }
 }
 
+// A book that keeps the right arrow for itself, as a game does, with a
+// listener its script adds only after a delay (as a fetched engine does), so
+// the reader's own listeners are already in place. Long enough to page.
+const KEYS_JS = `setTimeout(function () {
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'ArrowRight') return
+    event.preventDefault()
+    document.body.setAttribute('data-book-keys', (Number(document.body.getAttribute('data-book-keys')) || 0) + 1)
+  })
+  document.body.setAttribute('data-book-listening', 'true')
+}, 300)
+`
+
+/** @returns {Book} */
+function scriptedKeys() {
+  const title = 'Keys Book'
+  const chapter = chapterXhtml('Keys Chapter', 40).replace(
+    '</title>',
+    '</title>\n    <script src="keys.js"></script>',
+  )
+  return {
+    filename: 'scripted-keys.epub',
+    entries: [
+      // The mimetype entry must come first, exactly this content, no newline.
+      { name: 'mimetype', data: 'application/epub+zip' },
+      { name: 'META-INF/container.xml', data: CONTAINER_XML },
+      {
+        name: 'OEBPS/package.opf',
+        data: packageOpf({
+          identifier: 'urn:uuid:00000000-0000-0000-0000-000000000016',
+          title,
+          creator: 'Fixture Author',
+          language: 'en',
+          chapters: [
+            { file: 'chapter1.xhtml', properties: 'scripted', spineProperties: 'scripted' },
+          ],
+          extraManifest: [
+            '    <item id="keys" href="keys.js" media-type="application/javascript"/>',
+          ],
+        }),
+      },
+      {
+        name: 'OEBPS/nav.xhtml',
+        data: navXhtml(title, [{ label: 'Keys Chapter', href: 'chapter1.xhtml' }]),
+      },
+      { name: 'OEBPS/cover.svg', data: coverSvg('Keys', '#335566') },
+      { name: 'OEBPS/chapter1.xhtml', data: chapter },
+      { name: 'OEBPS/keys.js', data: KEYS_JS },
+    ],
+  }
+}
+
 /** @returns {Book} */
 function hostileBook() {
   const title = 'Hostile Book'
@@ -1057,6 +1109,7 @@ const outputs = [
   basicLtr,
   rtlBook,
   scriptedClips,
+  scriptedKeys,
   hostileBook,
   spacesInName,
   opdsCatalog,
