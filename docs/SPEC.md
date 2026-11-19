@@ -2,12 +2,16 @@
 
 Living acceptance criteria, extracted from and subordinate to `docs/BOOTSTRAP.md` (the founding spec). Every feature lands as: (1) acceptance criteria here, (2) a failing e2e or unit test, (3) implementation to green.
 
-## Keys a book keeps (post-0.12)
+## Page edges for the mouse, and keys a book keeps (post-0.12)
 
-A book that runs a game or other interactive page (a PuzzleScript puzzle) needs the arrow keys for itself.
+On a desktop the toolbar's Previous and Next buttons are small and far from the text. The blank margin either side of the book is a large, easy target for turning the page. And a book that runs a game or other interactive page (a PuzzleScript puzzle) needs the arrow keys for itself.
 
-Accepted when (e2e: `e2e/scripts.spec.ts`):
+Accepted when (e2e: `e2e/page-edges.spec.ts`, `e2e/scripts.spec.ts`):
 
+- Where the pointer can hover and is precise (`(hover: hover) and (pointer: fine)`), the blank band either side of the book turns the page when clicked: the left band goes left and the right band goes right, the same physical mapping as the arrow keys (§3.3). At rest the bands show nothing; under the pointer a band is tinted, shows a chevron, and the cursor becomes a pointer.
+- A band covers only space the book leaves blank, so a click on the book's content never turns the page. For a paginated book the band runs from the edge of the reading area to where the text column starts (the paginator's outer margin and the section's own side padding); for a fixed-layout book it is the letterbox beside the page or spread. Bands are measured again on every page turn and resize.
+- A band narrower than 2rem is not shown (a fixed-layout page that fills the window's width, a very narrow window); the toolbar buttons and keys still page. No bands in scrolled flow, or on touch-only screens.
+- The bands are a mouse convenience that duplicates the toolbar's Previous and Next buttons, which remain the keyboard and screen-reader route: the bands are hidden from assistive technology and out of the tab order, and clicking one leaves focus where it was.
 - A key the book's own script handles (cancels with `preventDefault`) is the book's: the reader does not page on it, however late the book's script started listening. Keys the book leaves alone page as before. With scripts off nothing in the book can cancel a key.
 
 ## A picture fullscreen, with zoom and pan (post-0.11)

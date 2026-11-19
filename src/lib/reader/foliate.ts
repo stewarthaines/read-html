@@ -295,3 +295,52 @@ export async function goToPlace(view: FoliateViewElement, place: PlaceLink): Pro
   await view.goTo(target)
   return true
 }
+
+/** Widths in CSS pixels of the blank space the book leaves at each side of
+ *  the renderer, with the renderer's own box (docs/SPEC.md, page edges). */
+export interface BlankBands {
+  box: DOMRect
+  left: number
+  right: number
+}
+
+/**
+ * The blank band either side of what the book shows. A paginated book's runs
+ * from the renderer's edge to the text column: the paginator's outer margin
+ * (outside the scroller) plus the section's own side padding (inside it). A
+ * fixed-layout book's is the letterbox beside the page or spread, with a
+ * spread's blank side. Null where
+ * there is nothing to measure (scrolled flow, no page yet). Reads the
+ * renderers' shadow roots, which the vendored copies open (VENDORED.md).
+ */
+export function blankBands(view: FoliateViewElement): BlankBands | null {
+  const renderer = view.renderer
+  const root = renderer.shadowRoot
+  if (!root) return null
+  const box = renderer.getBoundingClientRect()
+  if (renderer.localName === 'foliate-paginator') {
+    if (renderer.getAttribute('flow') === 'scrolled') return null
+    const scroller = root.getElementById('container')
+    const doc = scroller?.querySelector('iframe')?.contentDocument
+    if (!scroller || !doc?.defaultView) return null
+    const padding = doc.defaultView.getComputedStyle(doc.documentElement)
+    const shown = scroller.getBoundingClientRect()
+    return {
+      box,
+      left: shown.left - box.left + parseFloat(padding.paddingLeft),
+      right: box.right - shown.right + parseFloat(padding.paddingRight),
+    }
+  }
+  // A spread's blank side keeps its frame but hides the frame's iframe, so
+  // the pages are the shown iframes inside shown frames.
+  const pages = Array.from(root.querySelectorAll('iframe')).filter(
+    (page) => page.style.display !== 'none' && page.parentElement?.style.display !== 'none',
+  )
+  if (pages.length === 0) return null
+  const rects = pages.map((page) => page.getBoundingClientRect())
+  return {
+    box,
+    left: Math.min(...rects.map((rect) => rect.left)) - box.left,
+    right: box.right - Math.max(...rects.map((rect) => rect.right)),
+  }
+}

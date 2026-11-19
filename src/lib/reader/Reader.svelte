@@ -4,6 +4,7 @@
   import { t } from '../i18n/index.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import PictureViewer from './PictureViewer.svelte'
+  import PageEdges from './PageEdges.svelte'
   import { settings, type Spread } from '../settings/index.svelte'
   import { bookContentCss } from '../theme/book'
   import { decideScripting } from '../scripting/consent'
@@ -416,7 +417,12 @@
           >
         </p>
       {/if}
-      <div class="view" bind:this={container}></div>
+      <div class="stage">
+        <div class="view" bind:this={container}></div>
+        {#if view}
+          <PageEdges {view} />
+        {/if}
+      </div>
     </main>
   </div>
   <PictureViewer bind:this={pictureViewer} onopenchange={(open) => (viewingPicture = open)} />
@@ -555,6 +561,15 @@
   main {
     flex: 1;
     min-inline-size: 0;
+    min-block-size: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Positioned: the page edges sit over the book (see PageEdges). */
+  .stage {
+    position: relative;
+    flex: 1;
     min-block-size: 0;
     display: flex;
     flex-direction: column;
