@@ -2,6 +2,16 @@
 
 Notable changes to READ.html, described from the reader's point of view. Implementation detail lives in the git history. This project follows [Semantic Versioning](https://semver.org).
 
+## [0.13.0] — 2026-11-19
+
+### Added
+
+- With a mouse, click the blank margin either side of the book to turn the page.
+
+### Fixed
+
+- Games in a book with interactive features on, such as puzzles played with the arrow keys, now get those keys instead of the page turning.
+
 ## [0.12.0] — 2026-11-16
 
 ### Added
